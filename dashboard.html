@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fefe · Daily Panel</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #fff; min-height: 100vh; position: relative; }
+  .bg { position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(850px 650px at 8% 6%, rgba(59,130,246,0.95), transparent 55%),
+      radial-gradient(780px 620px at 52% 14%, rgba(147,51,234,0.85), transparent 55%),
+      radial-gradient(900px 700px at 95% 22%, rgba(225,29,72,0.85), transparent 58%),
+      radial-gradient(1000px 800px at 88% 102%, rgba(234,88,12,0.9), transparent 60%),
+      linear-gradient(135deg, #1e3a8a, #6d28d9 42%, #be185d 70%, #c2410c 112%); }
+  .wrap { position: relative; z-index: 1; padding: 22px clamp(14px,3vw,34px) 50px; }
+  .hero { display:flex; justify-content:space-between; align-items:flex-end; gap:14px; max-width:1280px; margin:0 auto 16px; }
+  .title { font-size: clamp(24px,4vw,36px); font-weight:800; margin:6px 0 0; letter-spacing:-0.02em; text-shadow:0 2px 18px rgba(0,0,0,0.3); }
+  .hbtns { display:flex; gap:8px; }
+  .hbtn { font:700 11px/1 'Space Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:#fff; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.25); border-radius:99px; padding:9px 14px; cursor:pointer; white-space:nowrap; backdrop-filter:blur(8px); }
+  .hbtn:hover { background:rgba(0,0,0,0.45); }
+
+  .settings { max-width:1280px; margin:0 auto 16px; background:#16161d; border:1px solid rgba(255,255,255,0.1); border-radius:18px; padding:16px 18px; }
+  .settings h3 { margin:0 0 4px; font-size:15px; }
+  .settings p { margin:0 0 12px; color:rgba(255,255,255,0.6); font-size:12.5px; line-height:1.5; }
+  .srow { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
+  .sinput { flex:1; min-width:220px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.16); border-radius:10px; padding:10px 12px; color:#fff; font-size:13.5px; outline:none; font-family:inherit; }
+  .sinput::placeholder { color:rgba(255,255,255,0.45); }
+  .savebtn { background:#34D399; color:#0d1f17; border:none; border-radius:10px; padding:10px 16px; font-weight:700; cursor:pointer; font-family:inherit; }
+
+  .grid { max-width:1280px; margin:0 auto; display:grid; gap:13px; grid-template-columns:repeat(6,1fr); grid-auto-rows:112px; grid-auto-flow:row dense; }
+  @media (max-width:760px){ .grid{ grid-template-columns:1fr; grid-auto-rows:auto; } .tile{ grid-column:auto !important; grid-row:auto !important; } .tbody.scroll{ max-height:none !important; overflow:visible !important; } }
+
+  .tile { position:relative; border-radius:20px; padding:14px 15px; overflow:hidden; height:100%; display:flex; flex-direction:column; transition:background .35s ease, box-shadow .35s ease, border-color .35s ease; }
+  .tilehead { display:flex; justify-content:space-between; align-items:center; margin-bottom:9px; flex:none; }
+  .ldot { width:6px; height:6px; border-radius:99px; transition:all .35s ease; }
+  .tbody { flex:1; min-height:0; }
+  .tbody.scroll { overflow-y:auto; }
+  .tbody.scroll::-webkit-scrollbar { width:5px; } .tbody.scroll::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.18); border-radius:9px; }
+  .topright { position:absolute; top:12px; right:12px; z-index:3; }
+  .iconbtn { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.16); color:rgba(255,255,255,0.8); border-radius:8px; width:28px; height:28px; cursor:pointer; font-size:14px; display:inline-flex; align-items:center; justify-content:center; }
+  .iconbtn:hover { color:#fff; background:rgba(255,255,255,0.2); }
+  .movebtn { background:rgba(255,255,255,0.18); border:1px solid rgba(255,255,255,0.22); color:#fff; border-radius:6px; width:24px; height:24px; cursor:pointer; font-size:15px; }
+  .chip { display:flex; align-items:center; gap:9px; text-align:left; border:1px solid; border-radius:11px; padding:10px 12px; cursor:pointer; font-size:13px; font-family:inherit; transition:all .2s; width:100%; }
+  .tick { width:19px; height:19px; flex:none; border:1.5px solid; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; font-size:11px; color:#14141a; cursor:pointer; font-weight:800; transition:all .2s; }
+  .tick.sm { width:16px; height:16px; font-size:10px; }
+  .hrow,.trow { display:flex; align-items:center; gap:9px; }
+  .trow { padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.07); }
+  .del { background:none; border:none; color:rgba(255,255,255,0.45); font-size:17px; cursor:pointer; line-height:1; padding:0 2px; }
+  .del:hover { color:#FB7185; }
+  .addrow { display:flex; gap:7px; }
+  .addinput { flex:1; min-width:0; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.16); border-radius:9px; padding:8px 11px; color:#fff; font-size:13.5px; outline:none; font-family:inherit; }
+  .addinput::placeholder { color:rgba(255,255,255,0.5); }
+  .addinput[type=date],.addinput[type=time]{ color-scheme:dark; }
+  .addbtn { background:#FBBF24; color:#14141a; border:none; border-radius:9px; width:36px; font-size:19px; font-weight:700; cursor:pointer; flex:none; }
+  .pill { display:inline-flex; align-items:center; font:700 11.5px/1 'Space Mono',monospace; letter-spacing:.03em; color:#fff; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.18); border-radius:99px; padding:8px 13px; text-decoration:none; cursor:pointer; }
+  .pill:hover { background:rgba(255,255,255,0.2); }
+  .mark { display:inline-flex; align-items:center; gap:7px; font:700 11.5px/1 'Plus Jakarta Sans',sans-serif; border:1px solid; border-radius:99px; padding:7px 12px; cursor:pointer; transition:all .25s; }
+  .recall { font:700 11.5px/1 'Plus Jakarta Sans',sans-serif; border-radius:8px; padding:7px 13px; cursor:pointer; border:1px solid; }
+  .recall.got { color:#fff; border-color:#34D399; background:rgba(52,211,153,0.26); }
+  .recall.lost { color:rgba(255,255,255,0.7); border-color:rgba(255,255,255,0.2); background:transparent; }
+  .link { color:#FBBF24; background:none; border:none; cursor:pointer; text-decoration:underline; padding:0; font-size:12.5px; font-family:inherit; }
+  .puBtn { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.18); color:#fff; border-radius:9px; padding:7px 0; flex:1; cursor:pointer; font-weight:700; font-size:13px; font-family:inherit; }
+  .puBtn:hover { background:rgba(255,255,255,0.2); }
+  .bars { display:flex; align-items:flex-end; gap:6px; height:92px; margin-top:4px; }
+  .barcol { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; height:100%; justify-content:flex-end; }
+  .bar { width:100%; border-radius:5px 5px 2px 2px; background:linear-gradient(180deg,#A78BFA,#7C5CE0); min-height:3px; transition:height .4s ease; }
+  .barval { font:700 10px/1 'Space Mono',monospace; color:rgba(255,255,255,0.8); }
+  .barday { font:700 9px/1 'Space Mono',monospace; color:rgba(255,255,255,0.45); letter-spacing:.05em; }
+  .foot { max-width:1280px; margin:24px auto 0; text-align:center; }
+  .ro { font:700 9.5px/1.4 'Space Mono',monospace; letter-spacing:.16em; text-transform:uppercase; }
+  .enter { animation: rise .5s ease both; }
+  @keyframes rise { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+  .wig { animation: wiggle .4s ease-in-out infinite; }
+  @keyframes wiggle { 0%,100%{transform:rotate(-0.35deg);} 50%{transform:rotate(0.35deg);} }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .wig,.iconbtn,.enter { animation:none !important; } }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.10/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+/* ---------- accents ---------- */
+const V = { indigo:"#5B7CFA", lime:"#A3E635", sky:"#38BDF8", green:"#34D399", violet:"#A78BFA", amber:"#FBBF24", rose:"#FB7185", cyan:"#22D3EE", pink:"#F472B6" };
+const WHITE="#fff", DIM="rgba(255,255,255,0.66)", FAINT="rgba(255,255,255,0.42)";
+const hexA=(h,a)=>h+a;
+const uid=()=> (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : "id-"+Date.now()+"-"+Math.random().toString(16).slice(2);
+
+/* ---------- localStorage (persists in your browser) ---------- */
+const load=(k,fb)=>{ try{ const v=localStorage.getItem("fefe_"+k); return v==null?fb:JSON.parse(v); }catch{ return fb; } };
+const save=(k,val)=>{ try{ localStorage.setItem("fefe_"+k, JSON.stringify(val)); }catch(e){} };
+const getKey=()=> (localStorage.getItem("fefe_apiKey")||"").trim();
+const setKey=(v)=> localStorage.setItem("fefe_apiKey", v.trim());
+
+/* ---------- dates ---------- */
+const pad=n=>String(n).padStart(2,"0");
+const dateKey=(d=new Date())=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+function addDays(key,n){ const [y,m,d]=key.split("-").map(Number); const dt=new Date(y,m-1,d); dt.setDate(dt.getDate()+n); return dateKey(dt); }
+const todayKey=dateKey();
+
+/* ---------- Claude API (uses YOUR key, stored only in this browser) ---------- */
+function extractJSON(text){
+  if(!text) return null;
+  let t=text.replace(/```json|```/g,"").trim();
+  const starts=[t.indexOf("{"),t.indexOf("[")].filter(i=>i>=0);
+  const start=starts.length?Math.min(...starts):-1;
+  const end=Math.max(t.lastIndexOf("}"),t.lastIndexOf("]"));
+  if(start===-1||end===-1) return null;
+  try{ return JSON.parse(t.slice(start,end+1)); }catch{ return null; }
+}
+async function callClaude(system,user,opts={}){
+  const key=getKey(); if(!key) return null;
+  const body={ model:"claude-sonnet-4-6", max_tokens:opts.max||1000, system, messages:[{role:"user",content:user}] };
+  if(opts.web) body.tools=[{type:"web_search_20250305", name:"web_search"}];
+  const res=await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{ "content-type":"application/json", "x-api-key":key, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
+    body:JSON.stringify(body)
+  });
+  if(!res.ok) throw new Error("API "+res.status);
+  const data=await res.json();
+  return (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
+}
+const genWord=(avoid)=>callClaude("You output ONLY valid minified JSON, no markdown.",
+  `One moderately uncommon but useful English word a curious bilingual reader probably doesn't know, with its French equivalent. Avoid: ${avoid.join(", ")||"none"}. Shape:{"term_en":"","ipa":"","pos":"","def_en":"","term_fr":"","def_fr":""}. Defs under 13 words.`).then(extractJSON);
+const genMusic=(taste,avoid)=>callClaude("You output ONLY valid minified JSON, no markdown.",
+  `Recommend ONE specific, real, findable song for taste:"${taste}". Lean interesting over obvious. Don't repeat:${avoid.join(" | ")||"none"}. Shape:{"title":"","artist":"","year":"","why":""}. "why" max 15 words, warm, second-person.`).then(extractJSON);
+const genWorth=()=>callClaude("You output ONLY valid minified JSON, no markdown.",
+  `Give ONE genuinely useful, important thing to understand — a concept, principle, mental model, or significant piece of knowledge that improves how someone understands the world or makes better decisions. NOT trivia or a fun fact. 2-3 clear, concrete sentences a smart person would be glad to know. Shape:{"text":"","category":""}.`).then(extractJSON);
+async function genWorld(){
+  const out=await callClaude("You output ONLY a valid JSON array, no markdown.",
+    `Give me today's 5 most important world developments. For each: a clear "headline" (max 9 words) and a substantive "summary" of 2-3 sentences explaining what happened AND why it matters / the wider context, written so a smart reader genuinely learns something (not a shallow one-liner). Neutral and informative. JSON array of {"headline":"","summary":""}.`,
+    {web:true, max:1500});
+  const arr=extractJSON(out); return Array.isArray(arr)?arr:null;
+}
+
+/* ---------- seeds (shown until you add a key + refresh) ---------- */
+const SEED={
+  word:{ term_en:"Ubiquitous", ipa:"/juːˈbɪkwɪtəs/", pos:"adj.", def_en:"present, appearing, or found everywhere", term_fr:"omniprésent", def_fr:"présent partout à la fois" },
+  worth:{ category:"Decision-making", text:"Opportunity cost is the real price of any choice: the value of the best thing you gave up to make it. Money spent is obvious; the time, focus, and alternatives you forgo are the hidden cost that usually matters more." },
+  music:{ title:"Apocalypse", artist:"Cigarettes After Sex", year:"2017", why:"Hazy, slow, film-grain romance — made for your analog mood." },
+  world:[{ headline:"Add your API key for a live briefing", summary:"This tile writes a deeper 5-story world briefing every day — what happened and why it matters — once you add an Anthropic key in ⚙ Settings and press refresh. Until then it shows this note instead of inventing news." }],
+};
+
+/* ---------- spaced repetition ---------- */
+const INTERVALS=[1,3,7,16,35,90];
+const scheduleNew=(text,category)=>({ id:uid(), text, category, addedOn:todayKey, level:0, nextReview:addDays(todayKey,INTERVALS[0]) });
+const reschedule=(f,ok)=>{ const level=ok?Math.min(f.level+1,INTERVALS.length-1):Math.max(0,f.level-1); return {...f, level, nextReview:addDays(todayKey,INTERVALS[level])}; };
+
+/* ---------- habit streak ---------- */
+function streakOf(log,id){ const dt=!!(log[todayKey]&&log[todayKey][id]); let s=0,start=dt?0:1; for(let d=start;d<400;d++){ const k=addDays(todayKey,-d); if(log[k]&&log[k][id]) s++; else break; } return s; }
+function weekCount(log,id){ let c=0; for(let d=0;d<7;d++){ const k=addDays(todayKey,-d); if(log[k]&&log[k][id]) c++; } return c; }
+
+/* ---------- tile chrome ---------- */
+function tileSkin(accent,lit){
+  return lit ? {
+    background:`radial-gradient(150px 110px at 82% -14%, ${hexA(accent,"5e")}, transparent 72%), linear-gradient(158deg, ${hexA(accent,"24")}, #14141b)`,
+    border:`1px solid ${hexA(accent,"73")}`,
+    boxShadow:`0 0 26px -8px ${hexA(accent,"8a")}, 0 18px 40px -24px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.08)`
+  } : {
+    background:"#16161d",
+    border:"1px solid rgba(255,255,255,0.07)",
+    boxShadow:"0 16px 36px -26px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.04)"
+  };
+}
+const Readout=({children,color})=> <span className="ro" style={{color:color||FAINT}}>{children}</span>;
+const IconBtn=({title,onClick,children,spin})=> <button title={title} onClick={onClick} className="iconbtn" style={{animation:spin?"spin .9s linear infinite":"none"}}>{children}</button>;
+const Developing=({label="Developing…"})=> <p style={{color:DIM,fontSize:12.5,margin:"6px 2px"}}>{label}</p>;
+
+function Tile({id,label,accent,lit=false,c=2,r=1,scroll=false,arrange,onMove,children}){
+  const dot=lit?accent:hexA(accent,"55");
+  return (
+    <section className={`tile ${arrange?"wig":"enter"}`} style={{gridColumn:`span ${c}`, gridRow:`span ${r}`, ...tileSkin(accent,lit)}}>
+      <div className="tilehead">
+        <span style={{display:"flex",alignItems:"center",gap:7}}>
+          <span className="ldot" style={{background:dot, boxShadow:lit?`0 0 12px ${accent}`:"none"}} />
+          <Readout color={dot}>{label}</Readout>
+        </span>
+        {arrange && <span style={{display:"flex",gap:4}}><button className="movebtn" onClick={()=>onMove(id,-1)}>‹</button><button className="movebtn" onClick={()=>onMove(id,1)}>›</button></span>}
+      </div>
+      <div className={`tbody${scroll?" scroll":""}`} style={{opacity:arrange?0.6:1}}>{children}</div>
+    </section>
+  );
+}
+function Ring({pct,color}){
+  const R=28,C=2*Math.PI*R,off=C*(1-pct);
+  return (
+    <svg width="68" height="68" viewBox="0 0 68 68">
+      <circle cx="34" cy="34" r={R} stroke="rgba(255,255,255,0.12)" strokeWidth="7" fill="none" />
+      <circle cx="34" cy="34" r={R} stroke={color} strokeWidth="7" fill="none" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={off} transform="rotate(-90 34 34)" style={{transition:"stroke-dashoffset .5s ease"}} />
+      <text x="34" y="38" textAnchor="middle" fill={WHITE} style={{font:"700 16px 'Plus Jakarta Sans',sans-serif"}}>{Math.round(pct*100)}</text>
+    </svg>
+  );
+}
+const MarkBtn=({on,accent,labelOff,labelOn,onClick})=>(
+  <button onClick={onClick} className="mark" style={{borderColor:on?accent:"rgba(255,255,255,0.2)", background:on?hexA(accent,"33"):"rgba(255,255,255,0.05)", color:on?WHITE:DIM, boxShadow:on?`0 0 16px -5px ${accent}`:"none"}}>
+    <span className="tick sm" style={{borderColor:on?accent:FAINT, background:on?accent:"transparent"}}>{on?"✓":""}</span>{on?labelOn:labelOff}
+  </button>
+);
+
+/* ============================ app ============================ */
+const ALL=["clock","progress","goals","word","worth","music","habits","pushups","todo","upcoming","world","recall","weekly","birthdays"];
+const SIZE={
+  clock:{c:2,r:1}, progress:{c:1,r:1}, goals:{c:3,r:2}, word:{c:2,r:2}, worth:{c:2,r:2}, music:{c:2,r:2},
+  habits:{c:2,r:2}, pushups:{c:2,r:1}, todo:{c:2,r:2}, upcoming:{c:2,r:2}, world:{c:4,r:2}, recall:{c:2,r:1}, weekly:{c:2,r:2}, birthdays:{c:2,r:1}
+};
+
+function App(){
+  const [arrange,setArrange]=useState(false);
+  const [showSettings,setShowSettings]=useState(false);
+  const [order,setOrder]=useState(()=>{ const o=load("widgetOrder",ALL); const s=Array.isArray(o)?o.filter(x=>ALL.includes(x)):[]; return [...s,...ALL.filter(x=>!s.includes(x))]; });
+
+  const [goalsLog,setGoalsLog]=useState(()=>load("goalsLog",{}));
+  const [todos,setTodos]=useState(()=>load("todos",[]));
+  const [habits,setHabits]=useState(()=>load("habits",[{id:uid(),name:"Sport"},{id:uid(),name:"Read"}]));
+  const [habitLog,setHabitLog]=useState(()=>load("habitLog",{}));
+  const [ritualLog,setRitualLog]=useState(()=>load("ritualLog",{}));
+  const [pushLog,setPushLog]=useState(()=>load("pushLog",{}));
+  const [events,setEvents]=useState(()=>load("events",[]));
+  const [birthdays,setBirthdays]=useState(()=>load("birthdays",[]));
+  const [recallList,setRecallList]=useState(()=>load("recall",[]));
+  const [taste,setTaste]=useState(()=>load("taste","analog / vintage texture, French and indie, film-photography mood, warm lo-fi, jazz-adjacent, nothing too obvious"));
+  const [keyField,setKeyField]=useState(()=>getKey());
+
+  const [daily,setDaily]=useState(()=>load("daily:"+todayKey, SEED));
+  const [busy,setBusy]=useState({word:false,worth:false,music:false,world:false});
+  const [weekly,setWeekly]=useState(null);
+  const [showWeekly,setShowWeekly]=useState(false);
+  const [now,setNow]=useState(new Date());
+  useEffect(()=>{ const t=setInterval(()=>setNow(new Date()),20000); return ()=>clearInterval(t); },[]);
+
+  const goals=goalsLog[todayKey]||[];
+  const rToday=ritualLog[todayKey]||{};
+  const hToday=habitLog[todayKey]||{};
+  const pToday=pushLog[todayKey]||0;
+
+  /* persistence */
+  const setGoals=(arr)=>{ const m={...goalsLog,[todayKey]:arr}; setGoalsLog(m); save("goalsLog",m); };
+  const persistTodos=v=>{ setTodos(v); save("todos",v); };
+  const persistHabits=v=>{ setHabits(v); save("habits",v); };
+  const persistEvents=v=>{ setEvents(v); save("events",v); };
+  const persistBirthdays=v=>{ setBirthdays(v); save("birthdays",v); };
+  const persistRecall=v=>{ setRecallList(v); save("recall",v); };
+  const persistOrder=v=>{ setOrder(v); save("widgetOrder",v); };
+  const toggleHabit=id=>{ const day={...hToday,[id]:!hToday[id]}; const m={...habitLog,[todayKey]:day}; setHabitLog(m); save("habitLog",m); };
+  const toggleRitual=k=>{ const day={...rToday,[k]:!rToday[k]}; const m={...ritualLog,[todayKey]:day}; setRitualLog(m); save("ritualLog",m); };
+  const addPush=n=>{ const v=Math.max(0,pToday+n); const m={...pushLog,[todayKey]:v}; setPushLog(m); save("pushLog",m); };
+  const setPushExact=n=>{ const v=Math.max(0,n|0); const m={...pushLog,[todayKey]:v}; setPushLog(m); save("pushLog",m); };
+  const writeDaily=useCallback((patch)=>{ setDaily(p=>{ const next={...p,...patch}; save("daily:"+todayKey,next); return next; }); },[]);
+
+  /* refreshers */
+  const noKeyNudge=()=>{ if(!getKey()){ setShowSettings(true); return true; } return false; };
+  const refreshWord=async()=>{ if(noKeyNudge())return; setBusy(b=>({...b,word:true})); try{ const hist=load("wordHistory",[]); const w=await genWord(hist.slice(-12)); if(w){ writeDaily({word:w}); save("wordHistory",[...hist,w.term_en].slice(-40)); } }catch(e){ alert("Word refresh failed: "+e.message); } setBusy(b=>({...b,word:false})); };
+  const refreshMusic=async()=>{ if(noKeyNudge())return; setBusy(b=>({...b,music:true})); try{ const hist=load("musicHistory",[]); const m=await genMusic(taste,hist.slice(-25)); if(m){ writeDaily({music:m}); save("musicHistory",[...hist,`${m.title} — ${m.artist}`].slice(-60)); } }catch(e){ alert("Music refresh failed: "+e.message); } setBusy(b=>({...b,music:false})); };
+  const refreshWorth=async()=>{ if(noKeyNudge())return; setBusy(b=>({...b,worth:true})); try{ const w=await genWorth(); if(w){ writeDaily({worth:w}); persistRecall([...recallList.filter(x=>x.addedOn!==todayKey), scheduleNew(w.text,w.category)]); } }catch(e){ alert("Insight refresh failed: "+e.message); } setBusy(b=>({...b,worth:false})); };
+  const refreshWorld=async()=>{ if(noKeyNudge())return; setBusy(b=>({...b,world:true})); try{ const n=await genWorld(); if(n) writeDaily({world:n}); }catch(e){ alert("World refresh failed: "+e.message); } setBusy(b=>({...b,world:false})); };
+
+  /* auto-generate once/day if a key exists and we don't have today's cache */
+  useEffect(()=>{
+    if(!getKey()) return;
+    if(load("daily:"+todayKey,null)) return;
+    (async()=>{
+      setBusy({word:true,worth:true,music:true,world:true});
+      try{
+        const [w,wo,m,n]=await Promise.all([
+          genWord(load("wordHistory",[]).slice(-12)),
+          genWorth(),
+          genMusic(taste, load("musicHistory",[]).slice(-25)),
+          genWorld()
+        ]);
+        const next={ word:w||SEED.word, worth:wo||SEED.worth, music:m||SEED.music, world:n||SEED.world };
+        setDaily(next); save("daily:"+todayKey,next);
+        if(w) save("wordHistory",[...load("wordHistory",[]),w.term_en].slice(-40));
+        if(m) save("musicHistory",[...load("musicHistory",[]),`${m.title} — ${m.artist}`].slice(-60));
+        if(wo) persistRecall([...load("recall",[]).filter(x=>x.addedOn!==todayKey), scheduleNew(wo.text,wo.category)]);
+      }catch(e){ /* keep seeds */ }
+      setBusy({word:false,worth:false,music:false,world:false});
+    })();
+  // eslint-disable-next-line
+  },[]);
+
+  const moveWidget=(id,dir)=>{ const i=order.indexOf(id),j=i+dir; if(j<0||j>=order.length)return; const next=[...order]; [next[i],next[j]]=[next[j],next[i]]; persistOrder(next); };
+
+  const saveSettings=()=>{ setKey(keyField); save("taste",taste); setShowSettings(false); try{ localStorage.removeItem("fefe_daily:"+todayKey); }catch(e){} location.reload(); };
+
+  /* weekly */
+  const buildWeekly=()=>{
+    const days=[]; for(let i=6;i>=0;i--) days.push(addDays(todayKey,-i));
+    const labels=days.map(k=>{ const [y,m,d]=k.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("en-GB",{weekday:"short"}).slice(0,2); });
+    const push=days.map(k=>pushLog[k]||0);
+    const pushMax=Math.max(...push,1), pushTotal=push.reduce((a,b)=>a+b,0);
+    const habitRows=habits.map(h=>({ name:h.name, streak:streakOf(habitLog,h.id), week:weekCount(habitLog,h.id) }));
+    const cutoff=addDays(todayKey,-6);
+    const tasksDone=todos.filter(t=>t.done&&t.completedAt&&t.completedAt>=cutoff).length;
+    const learned=recallList.filter(f=>f.addedOn>=cutoff).length;
+    let goalsDone=0; days.forEach(k=>{ (goalsLog[k]||[]).forEach(g=>{ if(g.done) goalsDone++; }); });
+    const songs=[]; days.forEach(k=>{ const d=load("daily:"+k,null); if(d&&d.music) songs.push(`${d.music.title} — ${d.music.artist}`); });
+    setWeekly({ labels, push, pushMax, pushTotal, habitRows, tasksDone, learned, goalsDone, songs });
+  };
+  const openWeekly=()=>{ if(!showWeekly) buildWeekly(); setShowWeekly(s=>!s); };
+
+  /* derived */
+  const dueFacts=recallList.filter(f=>f.nextReview<=todayKey && f.addedOn!==todayKey).slice(0,5);
+  const todayBdays=birthdays.filter(b=>Number(b.month)===now.getMonth()+1 && Number(b.day)===now.getDate());
+  const greeting=now.getHours()<12?"Bonjour":now.getHours()<18?"Bon aprèm":"Bonsoir";
+  const goalsLit=goals.length>0 && goals.every(g=>g.done);
+  const habitsLit=habits.length>0 && habits.every(h=>hToday[h.id]);
+  const todoLit=todos.length>0 && todos.every(t=>t.done);
+  const litTotal=3 + habits.length + goals.length;
+  const litDone=(rToday.word?1:0)+(rToday.worth?1:0)+(rToday.music?1:0)+habits.filter(h=>hToday[h.id]).length+goals.filter(g=>g.done).length;
+  const pct=litTotal?litDone/litTotal:0;
+  const upcoming=[...events].filter(e=>e.date>=todayKey).sort((a,b)=>a.date.localeCompare(b.date)||(a.time||"").localeCompare(b.time||""));
+  const dayLabel=k=>{ if(k===todayKey)return"Today"; if(k===addDays(todayKey,1))return"Tomorrow"; const [y,m,d]=k.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}); };
+
+  const widgets={
+    clock:(
+      <Tile id="clock" label={now.toLocaleDateString("en-GB",{weekday:"long"})} accent={V.amber} c={2} r={1} arrange={arrange} onMove={moveWidget}>
+        <div style={{display:"flex",alignItems:"baseline",gap:12}}>
+          <span style={{font:"800 40px/1 'Plus Jakarta Sans',sans-serif",color:WHITE,letterSpacing:"-0.02em"}}>{pad(now.getHours())}:{pad(now.getMinutes())}</span>
+          <span style={{display:"flex",flexDirection:"column"}}>
+            <span style={{color:V.rose,fontSize:18,fontWeight:800,lineHeight:1}}>{now.getDate()}</span>
+            <Readout>{now.toLocaleDateString("en-GB",{month:"short"}).toUpperCase()}</Readout>
+          </span>
+        </div>
+      </Tile>
+    ),
+    progress:(
+      <Tile id="progress" label="Lit today" accent={V.green} c={1} r={1} arrange={arrange} onMove={moveWidget}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10,height:"100%"}}>
+          <Ring pct={pct} color={V.green} />
+          <span style={{display:"flex",flexDirection:"column"}}>
+            <span style={{color:WHITE,fontSize:13,fontWeight:700}}>{litDone}/{litTotal}</span>
+            <span style={{color:FAINT,fontSize:10.5}}>done</span>
+          </span>
+        </div>
+      </Tile>
+    ),
+    goals:(
+      <Tile id="goals" label="Today's goals" accent={V.amber} lit={goalsLit} c={3} r={2} scroll arrange={arrange} onMove={moveWidget}>
+        <GoalInput onAdd={text=>setGoals([...goals,{id:uid(),text,done:false}])} />
+        <div style={{display:"flex",flexDirection:"column",marginTop:6}}>
+          {goals.length===0 && <p style={{color:DIM,fontSize:12.5,margin:"6px 2px"}}>What would make today a win? Add a goal or two.</p>}
+          {goals.map(g=>(
+            <div key={g.id} className="trow">
+              <button className="tick" onClick={()=>setGoals(goals.map(x=>x.id===g.id?{...x,done:!x.done}:x))} style={{borderColor:g.done?V.amber:FAINT, background:g.done?V.amber:"transparent"}}>{g.done?"✓":""}</button>
+              <span style={{flex:1,color:g.done?FAINT:WHITE,textDecoration:g.done?"line-through":"none",fontSize:14}}>{g.text}</span>
+              <button className="del" onClick={()=>setGoals(goals.filter(x=>x.id!==g.id))}>×</button>
+            </div>
+          ))}
+        </div>
+      </Tile>
+    ),
+    word:(
+      <Tile id="word" label="Mot du jour" accent={V.indigo} lit={!!rToday.word} c={2} r={2} scroll arrange={arrange} onMove={moveWidget}>
+        <div className="topright"><IconBtn title="Another word" onClick={refreshWord} spin={busy.word}>↻</IconBtn></div>
+        {daily.word && (
+          <div>
+            <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}>
+              <span style={{color:WHITE,fontSize:21,fontWeight:700}}>{daily.word.term_en}</span>
+              {daily.word.pos && <Readout>{daily.word.pos}</Readout>}
+            </div>
+            {daily.word.ipa && <span style={{color:DIM,fontSize:11.5}}>{daily.word.ipa}</span>}
+            <p style={{color:WHITE,fontSize:13,margin:"5px 0 0",lineHeight:1.35}}>{daily.word.def_en}</p>
+            <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid rgba(255,255,255,0.14)"}}>
+              <span style={{color:V.indigo,fontSize:14.5,fontWeight:700}}>{daily.word.term_fr}</span>
+              <span style={{color:DIM,fontSize:12.5}}> — {daily.word.def_fr}</span>
+            </div>
+            <div style={{marginTop:10}}><MarkBtn on={!!rToday.word} accent={V.indigo} labelOff="Mark learned" labelOn="Learned" onClick={()=>toggleRitual("word")} /></div>
+          </div>
+        )}
+      </Tile>
+    ),
+    worth:(
+      <Tile id="worth" label="Worth knowing" accent={V.lime} lit={!!rToday.worth} c={2} r={2} scroll arrange={arrange} onMove={moveWidget}>
+        <div className="topright"><IconBtn title="Another insight" onClick={refreshWorth} spin={busy.worth}>↻</IconBtn></div>
+        {daily.worth && (
+          <div>
+            {daily.worth.category && <Readout color={V.lime}>{daily.worth.category}</Readout>}
+            <p style={{color:WHITE,fontSize:13.5,margin:"7px 0 9px",lineHeight:1.45}}>{daily.worth.text}</p>
+            <MarkBtn on={!!rToday.worth} accent={V.lime} labelOff="Got it" labelOn="Learned" onClick={()=>toggleRitual("worth")} />
+          </div>
+        )}
+      </Tile>
+    ),
+    music:(
+      <Tile id="music" label="One song" accent={V.sky} lit={!!rToday.music} c={2} r={2} scroll arrange={arrange} onMove={moveWidget}>
+        <div className="topright"><IconBtn title="Another pick" onClick={refreshMusic} spin={busy.music}>↻</IconBtn></div>
+        {daily.music && (
+          <div>
+            <div style={{color:WHITE,fontSize:17,fontWeight:700,lineHeight:1.2}}>{daily.music.title}</div>
+            <div style={{color:V.sky,fontSize:13,marginTop:1}}>{daily.music.artist}{daily.music.year?` · ${daily.music.year}`:""}</div>
+            <p style={{color:DIM,fontSize:12,margin:"7px 0 9px",lineHeight:1.35}}>{daily.music.why}</p>
+            <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+              <a className="pill" target="_blank" rel="noreferrer" href={`https://open.spotify.com/search/${encodeURIComponent(daily.music.title+" "+daily.music.artist)}`}>Spotify ↗</a>
+              <a className="pill" target="_blank" rel="noreferrer" href={`https://music.youtube.com/search?q=${encodeURIComponent(daily.music.title+" "+daily.music.artist)}`}>YT ↗</a>
+              <MarkBtn on={!!rToday.music} accent={V.sky} labelOff="Listened" labelOn="Heard" onClick={()=>toggleRitual("music")} />
+            </div>
+          </div>
+        )}
+      </Tile>
+    ),
+    habits:(
+      <Tile id="habits" label="Habits & sport" accent={V.violet} lit={habitsLit} c={2} r={2} scroll arrange={arrange} onMove={moveWidget}>
+        <div style={{display:"flex",flexDirection:"column",gap:7,marginBottom:9}}>
+          {habits.length===0 && <p style={{color:DIM,fontSize:12.5,margin:2}}>Add a habit to start a streak.</p>}
+          {habits.map(h=>{ const on=!!hToday[h.id]; const st=streakOf(habitLog,h.id); return (
+            <div key={h.id} className="hrow">
+              <button className="tick" onClick={()=>toggleHabit(h.id)} style={{borderColor:on?V.violet:FAINT, background:on?V.violet:"transparent"}}>{on?"✓":""}</button>
+              <span style={{flex:1,color:on?WHITE:DIM,fontSize:13.5}}>{h.name}</span>
+              <span style={{font:"700 10.5px/1 'Space Mono',monospace",color:st>0?V.amber:FAINT}}>{st>0?`🔥${st}`:"—"}</span>
+              <button className="del" onClick={()=>persistHabits(habits.filter(x=>x.id!==h.id))}>×</button>
+            </div>
+          ); })}
+        </div>
+        <HabitInput onAdd={name=>persistHabits([...habits,{id:uid(),name}])} />
+      </Tile>
+    ),
+    pushups:(
+      <Tile id="pushups" label="Push-ups · today" accent={V.rose} lit={pToday>0} c={2} r={1} arrange={arrange} onMove={moveWidget}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <span style={{font:"800 34px/1 'Plus Jakarta Sans',sans-serif",color:WHITE}}>{pToday}</span>
+          <div style={{display:"flex",gap:6,flex:1}}>
+            <button className="puBtn" onClick={()=>addPush(5)}>+5</button>
+            <button className="puBtn" onClick={()=>addPush(10)}>+10</button>
+            <button className="puBtn" onClick={()=>addPush(20)}>+20</button>
+            <button className="puBtn" style={{flex:"none",width:34}} onClick={()=>setPushExact(0)}>↺</button>
+          </div>
+        </div>
+      </Tile>
+    ),
+    todo:(
+      <Tile id="todo" label="To-do" accent={V.green} lit={todoLit} c={2} r={2} scroll arrange={arrange} onMove={moveWidget}>
+        <TodoInput onAdd={text=>persistTodos([...todos,{id:uid(),text,done:false}])} />
+        <div style={{display:"flex",flexDirection:"column",marginTop:5}}>
+          {todos.length===0 && <p style={{color:DIM,fontSize:12.5,margin:"6px 2px"}}>Clear list. Add the next thing.</p>}
+          {todos.map(t=>(
+            <div key={t.id} className="trow">
+              <button className="tick" onClick={()=>persistTodos(todos.map(x=>x.id===t.id?{...x,done:!x.done,completedAt:!x.done?todayKey:null}:x))} style={{borderColor:t.done?V.green:FAINT, background:t.done?V.green:"transparent"}}>{t.done?"✓":""}</button>
+              <span style={{flex:1,color:t.done?FAINT:WHITE,textDecoration:t.done?"line-through":"none",fontSize:13.5}}>{t.text}</span>
+              <button className="del" onClick={()=>persistTodos(todos.filter(x=>x.id!==t.id))}>×</button>
+            </div>
+          ))}
+        </div>
+      </Tile>
+    ),
+    upcoming:(
+      <Tile id="upcoming" label="Upcoming" accent={V.cyan} c={2} r={2} scroll arrange={arrange} onMove={moveWidget}>
+        <EventInput onAdd={ev=>persistEvents([...events,{id:uid(),...ev}])} />
+        <div style={{marginTop:8}}>
+          {upcoming.length===0 && <p style={{color:DIM,fontSize:12.5,margin:"4px 2px"}}>Add appointments and deadlines with a date.</p>}
+          {Object.entries(upcoming.reduce((g,e)=>{ (g[e.date]=g[e.date]||[]).push(e); return g; },{})).map(([d,list])=>(
+            <div key={d} style={{marginBottom:9}}>
+              <Readout color={d===todayKey?V.cyan:FAINT}>{dayLabel(d)}</Readout>
+              <div style={{marginTop:4,display:"flex",flexDirection:"column",gap:4}}>
+                {list.map(e=>(
+                  <div key={e.id} style={{display:"flex",gap:8,alignItems:"baseline"}}>
+                    <span style={{font:"700 10.5px/1.3 'Space Mono',monospace",color:DIM,minWidth:42}}>{e.time||"—"}</span>
+                    <span style={{flex:1,color:WHITE,fontSize:13,lineHeight:1.3}}>{e.title}</span>
+                    <button className="del" onClick={()=>persistEvents(events.filter(x=>x.id!==e.id))}>×</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Tile>
+    ),
+    world:(
+      <Tile id="world" label="World briefing · today" accent={V.rose} c={4} r={2} scroll arrange={arrange} onMove={moveWidget}>
+        <div className="topright"><IconBtn title="Refresh briefing" onClick={refreshWorld} spin={busy.world}>↻</IconBtn></div>
+        {busy.world && <Developing label="Writing today's briefing…" />}
+        <div style={{display:"flex",flexDirection:"column",gap:13}}>
+          {(daily.world||[]).map((n,i)=>(
+            <div key={i}>
+              <div style={{color:WHITE,fontSize:14.5,fontWeight:700,lineHeight:1.25}}>{n.headline}</div>
+              <div style={{color:DIM,fontSize:12.8,lineHeight:1.5,marginTop:3}}>{n.summary}</div>
+            </div>
+          ))}
+        </div>
+      </Tile>
+    ),
+    recall:(
+      <Tile id="recall" label={`Recall · ${dueFacts.length} due`} accent={V.cyan} c={2} r={1} scroll arrange={arrange} onMove={moveWidget}>
+        {dueFacts.length===0 ? (
+          <p style={{color:DIM,fontSize:12.5,margin:"4px 2px",lineHeight:1.4}}>Nothing due. Insights you mark come back on a 1/3/7/16-day schedule so they stick.</p>
+        ) : (
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {dueFacts.map(f=>(
+              <div key={f.id} style={{paddingBottom:8,borderBottom:"1px solid rgba(255,255,255,0.12)"}}>
+                <p style={{color:WHITE,fontSize:13,margin:0,lineHeight:1.35}}>{f.text}</p>
+                <div style={{display:"flex",gap:7,marginTop:7}}>
+                  <button className="recall got" onClick={()=>persistRecall(recallList.map(x=>x.id===f.id?reschedule(x,true):x))}>Got it</button>
+                  <button className="recall lost" onClick={()=>persistRecall(recallList.map(x=>x.id===f.id?reschedule(x,false):x))}>Forgot</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Tile>
+    ),
+    weekly:(
+      <Tile id="weekly" label="Weekly review" accent={V.violet} c={2} r={2} scroll arrange={arrange} onMove={moveWidget}>
+        {!showWeekly ? (
+          <><p style={{color:DIM,fontSize:12.5,margin:"0 2px 10px",lineHeight:1.4}}>Your last 7 days — push-ups, streaks, goals, and what you finished.</p><button className="pill" onClick={openWeekly}>See this week →</button></>
+        ) : weekly ? (
+          <div style={{display:"flex",flexDirection:"column",gap:13}}>
+            <div>
+              <Readout color={V.violet}>Push-ups · {weekly.pushTotal} total</Readout>
+              <div className="bars">
+                {weekly.push.map((v,i)=>(
+                  <div key={i} className="barcol">
+                    <span className="barval">{v||""}</span>
+                    <div className="bar" style={{height:`${Math.max(3,(v/weekly.pushMax)*100)}%`}} />
+                    <span className="barday">{weekly.labels[i]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div><Readout color={V.amber}>Habits</Readout><div style={{marginTop:5,display:"flex",flexDirection:"column",gap:3}}>{weekly.habitRows.length===0 && <span style={{color:DIM,fontSize:12.5}}>No habits yet.</span>}{weekly.habitRows.map((h,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12.5,color:WHITE}}><span>{h.name}</span><span style={{color:DIM,fontFamily:"'Space Mono',monospace",fontSize:11.5}}>{h.streak>0?`🔥${h.streak} · `:""}{h.week}/7</span></div>))}</div></div>
+            <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+              <div><div style={{fontSize:22,fontWeight:700,color:WHITE}}>{weekly.goalsDone}</div><Readout>goals hit</Readout></div>
+              <div><div style={{fontSize:22,fontWeight:700,color:WHITE}}>{weekly.tasksDone}</div><Readout>tasks done</Readout></div>
+              <div><div style={{fontSize:22,fontWeight:700,color:WHITE}}>{weekly.learned}</div><Readout>learned</Readout></div>
+            </div>
+            {weekly.songs.length>0 && <div><Readout color={V.sky}>This week's songs</Readout><div style={{marginTop:4,color:DIM,fontSize:12,lineHeight:1.45}}>{weekly.songs.map((s,i)=><div key={i}>♪ {s}</div>)}</div></div>}
+            <button className="link" onClick={()=>setShowWeekly(false)} style={{alignSelf:"flex-start"}}>Hide</button>
+          </div>
+        ) : <Developing label="Crunching your week…" />}
+      </Tile>
+    ),
+    birthdays:(
+      <Tile id="birthdays" label="Birthdays" accent={V.pink} c={2} r={1} scroll arrange={arrange} onMove={moveWidget}>
+        {todayBdays.length>0 && (
+          <div style={{background:hexA(V.pink,"30"),border:`1px solid ${V.pink}`,borderRadius:11,padding:"9px 11px",marginBottom:9}}>
+            <span style={{color:WHITE,fontSize:13}}>🎂 Today: <b>{todayBdays.map(b=>b.name).join(", ")}</b></span>
+          </div>
+        )}
+        <BirthdayInput onAdd={b=>persistBirthdays([...birthdays,{id:uid(),...b}])} />
+        <div style={{display:"flex",flexDirection:"column",marginTop:5}}>
+          {birthdays.length===0 && <p style={{color:DIM,fontSize:12.5,margin:"6px 2px"}}>Add people so you never miss the day.</p>}
+          {[...birthdays].sort((a,b)=>a.month-b.month||a.day-b.day).map(b=>(
+            <div key={b.id} className="trow">
+              <span style={{flex:1,color:WHITE,fontSize:13.5}}>{b.name}</span>
+              <span style={{color:DIM,fontSize:11.5,fontFamily:"'Space Mono',monospace"}}>{pad(b.day)}/{pad(b.month)}</span>
+              <button className="del" onClick={()=>persistBirthdays(birthdays.filter(x=>x.id!==b.id))}>×</button>
+            </div>
+          ))}
+        </div>
+      </Tile>
+    ),
+  };
+
+  return (
+    <div className="wrap">
+      <header className="hero">
+        <div>
+          <Readout>{now.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"}).toUpperCase()}</Readout>
+          <h1 className="title">{greeting}, <span style={{color:V.amber}}>Fefe</span>.</h1>
+        </div>
+        <div className="hbtns">
+          <button className="hbtn" onClick={()=>setShowSettings(s=>!s)}>⚙ Settings</button>
+          <button className="hbtn" onClick={()=>setArrange(a=>!a)}>{arrange?"Done":"Arrange"}</button>
+        </div>
+      </header>
+
+      {showSettings && (
+        <div className="settings">
+          <h3>Settings</h3>
+          <p>Your Anthropic API key powers the four AI tiles (word, insight, song, world). It's stored only in this browser and sent only to Anthropic — never to anyone else. Get one at console.anthropic.com.</p>
+          <div className="srow">
+            <input className="sinput" type="password" placeholder="sk-ant-…  (paste your Anthropic API key)" value={keyField} onChange={e=>setKeyField(e.target.value)} />
+          </div>
+          <div className="srow">
+            <input className="sinput" placeholder="Music taste (used for song picks)" value={taste} onChange={e=>setTaste(e.target.value)} />
+          </div>
+          <div className="srow">
+            <button className="savebtn" onClick={saveSettings}>Save & refresh</button>
+            <span style={{color:FAINT,fontSize:12}}>Tip: host this file (Netlify/Vercel/GitHub Pages) so the AI tiles can reach Anthropic.</span>
+          </div>
+        </div>
+      )}
+
+      <div className="grid">{order.filter(id=>widgets[id]).map(id=> <React.Fragment key={id}>{widgets[id]}</React.Fragment> )}</div>
+
+      <footer className="foot"><Readout>Tiles wake to colour as you complete them · saved automatically in this browser · best in landscape</Readout></footer>
+    </div>
+  );
+}
+
+/* ---------- inputs ---------- */
+function GoalInput({onAdd}){ const [v,setV]=useState(""); const s=()=>{ const t=v.trim(); if(t){ onAdd(t); setV(""); } }; return <div className="addrow"><input className="addinput" placeholder="Add a goal for today…" value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>e.key==="Enter"&&s()} /><button className="addbtn" onClick={s}>+</button></div>; }
+function TodoInput({onAdd}){ const [v,setV]=useState(""); const s=()=>{ const t=v.trim(); if(t){ onAdd(t); setV(""); } }; return <div className="addrow"><input className="addinput" placeholder="Add a task…" value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>e.key==="Enter"&&s()} /><button className="addbtn" onClick={s}>+</button></div>; }
+function HabitInput({onAdd}){ const [v,setV]=useState(""); const s=()=>{ const t=v.trim(); if(t){ onAdd(t); setV(""); } }; return <div className="addrow"><input className="addinput" placeholder="Add a habit…" value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>e.key==="Enter"&&s()} /><button className="addbtn" onClick={s}>+</button></div>; }
+function EventInput({onAdd}){
+  const [title,setTitle]=useState(""); const [date,setDate]=useState(""); const [time,setTime]=useState("");
+  const s=()=>{ if(title.trim()&&date){ onAdd({title:title.trim(),date,time}); setTitle(""); setDate(""); setTime(""); } };
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+      <div className="addrow"><input className="addinput" placeholder="Event…" value={title} onChange={e=>setTitle(e.target.value)} onKeyDown={e=>e.key==="Enter"&&s()} /></div>
+      <div className="addrow"><input className="addinput" type="date" value={date} onChange={e=>setDate(e.target.value)} /><input className="addinput" type="time" style={{flex:"none",width:96}} value={time} onChange={e=>setTime(e.target.value)} /><button className="addbtn" onClick={s}>+</button></div>
+    </div>
+  );
+}
+function BirthdayInput({onAdd}){
+  const [name,setName]=useState(""); const [day,setDay]=useState(""); const [month,setMonth]=useState("");
+  const s=()=>{ const d=Number(day),m=Number(month); if(name.trim()&&d>=1&&d<=31&&m>=1&&m<=12){ onAdd({name:name.trim(),day:d,month:m}); setName(""); setDay(""); setMonth(""); } };
+  return (<div className="addrow"><input className="addinput" style={{flex:2}} placeholder="Name" value={name} onChange={e=>setName(e.target.value)} /><input className="addinput" style={{width:42,flex:"none",textAlign:"center"}} placeholder="DD" value={day} onChange={e=>setDay(e.target.value.replace(/\D/g,"").slice(0,2))} /><input className="addinput" style={{width:42,flex:"none",textAlign:"center"}} placeholder="MM" value={month} onChange={e=>setMonth(e.target.value.replace(/\D/g,"").slice(0,2))} onKeyDown={e=>e.key==="Enter"&&s()} /><button className="addbtn" onClick={s}>+</button></div>);
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
