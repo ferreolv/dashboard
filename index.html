@@ -130,7 +130,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.10/babel.min.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback } = React;
@@ -205,30 +204,26 @@ async function fetchWeather(){
   return { temp:Math.round(d.current.temperature_2m), code:d.current.weather_code, hi:Math.round(d.daily.temperature_2m_max[0]), lo:Math.round(d.daily.temperature_2m_min[0]), at:Date.now() };
 }
 
-/* Google Contacts birthdays (OAuth) */
-async function fetchGoogleBirthdays(token){
-  const out=[]; let page=null, guard=0;
-  do{
-    const u="https://people.googleapis.com/v1/people/me/connections?personFields=names,birthdays&pageSize=1000"+(page?("&pageToken="+page):"");
-    const r=await fetch(u,{headers:{Authorization:"Bearer "+token}});
-    if(!r.ok) throw new Error("People API "+r.status);
-    const d=await r.json();
-    (d.connections||[]).forEach(p=>{ const name=p.names&&p.names[0]&&p.names[0].displayName; const bd=(p.birthdays||[]).map(b=>b.date).find(x=>x&&x.month&&x.day); if(name&&bd) out.push({name, month:bd.month, day:bd.day}); });
-    page=d.nextPageToken; guard++;
-  } while(page && guard<6);
+/* iCloud / vCard (.vcf) birthday import — fully local, no network */
+function parseVcf(text){
+  const out=[]; const blocks=text.split(/BEGIN:VCARD/i);
+  for(const blk of blocks){
+    if(!/BDAY/i.test(blk)) continue;
+    const nM=blk.match(/(?:^|\n)FN[^:\n]*:([^\r\n]+)/i);
+    const bM=blk.match(/(?:^|\n)BDAY[^:\n]*:([^\r\n]+)/i);
+    if(!nM||!bM) continue;
+    const name=nM[1].trim();
+    const val=bM[1].split("T")[0].trim();
+    const lead=val.startsWith("--");
+    const digits=val.replace(/[^0-9]/g,"");
+    let mo,da;
+    if(lead && digits.length>=4){ mo=+digits.slice(0,2); da=+digits.slice(2,4); }
+    else if(digits.length>=8){ mo=+digits.slice(4,6); da=+digits.slice(6,8); }
+    else if(digits.length===4){ mo=+digits.slice(0,2); da=+digits.slice(2,4); }
+    else continue;
+    if(name && mo>=1 && mo<=12 && da>=1 && da<=31) out.push({name, month:mo, day:da});
+  }
   return out;
-}
-function connectGoogle(clientId, onList){
-  if(!(window.google&&google.accounts&&google.accounts.oauth2)){ alert("Google library still loading — give it a second and try again."); return; }
-  try{
-    const client=google.accounts.oauth2.initTokenClient({
-      client_id:clientId, scope:"https://www.googleapis.com/auth/contacts.readonly",
-      callback: async (resp)=>{ if(resp.error){ alert("Google sign-in: "+resp.error); return; }
-        try{ const list=await fetchGoogleBirthdays(resp.access_token); onList(list); }
-        catch(e){ alert("Couldn't read birthdays: "+e.message+"\\n\\nMake sure the People API is enabled in your Google Cloud project."); } }
-    });
-    client.requestAccessToken();
-  }catch(e){ alert("Google connect failed: "+e.message); }
 }
 
 /* seeds */
@@ -361,7 +356,6 @@ function App(){
   const [recallList,setRecallList]=useState(()=>load("recall",[]));
   const [taste,setTaste]=useState(()=>load("taste","analog / vintage texture, French and indie, film-photography mood, warm lo-fi, jazz-adjacent, nothing too obvious"));
   const [keyField,setKeyField]=useState(()=>getKey());
-  const [gClient,setGClient]=useState(()=>load("gClientId",""));
 
   const [daily,setDaily]=useState(()=>load("daily:"+todayKey, null));
   const haveKey=!!getKey();
@@ -467,14 +461,19 @@ function App(){
     drag.current=null;
   };
 
-  const saveSettings=()=>{ localStorage.setItem("fefe_apiKey",keyField.trim()); save("taste",taste); save("gClientId",gClient); try{ localStorage.removeItem("fefe_daily:"+todayKey);}catch(e){} location.reload(); };
+  const saveSettings=()=>{ localStorage.setItem("fefe_apiKey",keyField.trim()); save("taste",taste); try{ localStorage.removeItem("fefe_daily:"+todayKey);}catch(e){} location.reload(); };
   const resetLayout=()=>{ save("widgetOrder",ALL); save("sizes",DEFSIZE); setOrder(ALL); setSizes(DEFSIZE); };
-  const syncBirthdays=()=>{ if(!gClient){ goSettings(); return; } connectGoogle(gClient, list=>{
-    const manual=birthdays.filter(b=>b.source!=="google");
-    const seen=new Set(manual.map(b=>b.name+"|"+b.month+"|"+b.day));
-    const gs=list.filter(b=>{ const k=b.name+"|"+b.month+"|"+b.day; if(seen.has(k))return false; seen.add(k); return true; }).map(b=>({id:uid(),source:"google",...b}));
-    persistBirthdays([...manual,...gs]); alert(`Synced ${gs.length} birthday${gs.length===1?"":"s"} from Google contacts.`);
-  }); };
+  const vcfRef=useRef(null);
+  const importVcf=(file)=>{ if(!file) return; const r=new FileReader();
+    r.onload=()=>{ try{
+      const list=parseVcf(String(r.result));
+      const manual=birthdays.filter(b=>b.source!=="vcf");
+      const seen=new Set(manual.map(b=>b.name+"|"+b.month+"|"+b.day));
+      const add=list.filter(b=>{ const k=b.name+"|"+b.month+"|"+b.day; if(seen.has(k))return false; seen.add(k); return true; }).map(b=>({id:uid(),source:"vcf",...b}));
+      persistBirthdays([...manual,...add]);
+      alert(`Imported ${add.length} birthday${add.length===1?"":"s"} from your contacts.`+(list.length===0?"\n\nNo birthdays found in that file — make sure your contacts have a birthday set before exporting.":""));
+    }catch(e){ alert("Couldn't read that file: "+e.message); } };
+    r.readAsText(file); };
 
   const buildWeekly=()=>{ const days=[]; for(let i=6;i>=0;i--) days.push(addDays(todayKey,-i));
     const labels=days.map(k=>{ const [y,m,d]=k.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("en-GB",{weekday:"short"}).slice(0,2); });
@@ -602,14 +601,15 @@ function App(){
         </div>) : <Note>Crunching your week…</Note>),
     birthdays: T("birthdays","Birthdays",false,null,<>
       {todayBdays.length>0 && <div style={{background:"var(--field)",border:"1px solid var(--fieldbd)",borderRadius:11,padding:"9px 11px",marginBottom:9}}><span style={{fontSize:13}}>🎂 Today: <b>{todayBdays.map(b=>b.name).join(", ")}</b></span></div>}
-      <div style={{display:"flex",gap:7,marginBottom:8,flexWrap:"wrap"}}>
-        <button className="pill" onClick={syncBirthdays}>⟳ Sync from Google</button>
+      <div style={{display:"flex",gap:7,marginBottom:8,flexWrap:"wrap",alignItems:"center"}}>
+        <button className="pill" onClick={()=>vcfRef.current&&vcfRef.current.click()}>↧ Import contacts (.vcf)</button>
+        <input ref={vcfRef} type="file" accept=".vcf,text/vcard,text/directory" style={{display:"none"}} onChange={e=>{ importVcf(e.target.files&&e.target.files[0]); e.target.value=""; }} />
       </div>
       <BirthdayInput onAdd={b=>persistBirthdays([...birthdays,{id:uid(),...b}])} />
       <div style={{marginTop:5}}>
         {birthdays.length===0 && <Note>Sync from Google, or add people manually.</Note>}
         {[...birthdays].sort((a,b)=>a.month-b.month||a.day-b.day).map(b=>(<div key={b.id} className="trow">
-          <span style={{flex:1,fontSize:13.5,display:"flex",alignItems:"center",gap:6}}>{b.name}{b.source==="google" && <span className="gbadge">G</span>}</span>
+          <span style={{flex:1,fontSize:13.5,display:"flex",alignItems:"center",gap:6}}>{b.name}{b.source && <span className="gbadge">sync</span>}</span>
           <span className="muted" style={{fontSize:11.5,fontFamily:"'Space Mono',monospace"}}>{pad(b.day)}/{pad(b.month)}</span>
           <button className="del" onClick={()=>persistBirthdays(birthdays.filter(x=>x.id!==b.id))}>×</button>
         </div>))}
@@ -640,8 +640,7 @@ function App(){
           <div className="srow"><input className="sinput" type="password" placeholder="sk-ant-…" value={keyField} onChange={e=>setKeyField(e.target.value)} /></div>
           <div className="lab">Music taste</div>
           <div className="srow"><input className="sinput" placeholder="e.g. analog, indie, lo-fi…" value={taste} onChange={e=>setTaste(e.target.value)} /></div>
-          <div className="lab">Google OAuth Client ID — for birthday sync from contacts</div>
-          <div className="srow"><input className="sinput" placeholder="…apps.googleusercontent.com" value={gClient} onChange={e=>setGClient(e.target.value)} /></div>
+          <p className="hint" style={{marginTop:12}}>Birthdays: export your contacts as a vCard (.vcf) and use “Import contacts” on the Birthdays tile.</p>
           <div className="srow" style={{marginTop:14}}>
             <button className="savebtn" onClick={saveSettings}>Save & refresh</button>
             <button className="ghostbtn" onClick={resetLayout}>Reset layout</button>
