@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fefe · Daily Panel</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #fff;
+    background: linear-gradient(180deg, #17171b, #0d0d10); min-height: 100vh; }
+  .wrap { padding: 22px clamp(14px,3vw,34px) 50px; }
+
+  .hero { display:flex; justify-content:space-between; align-items:center; gap:14px; max-width:1280px; margin:0 auto 18px; flex-wrap:wrap; }
+  .heroL { display:flex; align-items:baseline; gap:16px; flex-wrap:wrap; }
+  .clock { font:800 38px/1 'Plus Jakarta Sans',sans-serif; letter-spacing:-0.02em; }
+  .clock .sec { color:rgba(255,255,255,0.4); font-size:20px; }
+  .heroMeta { display:flex; flex-direction:column; }
+  .greet { font-size:18px; font-weight:700; }
+  .heroR { display:flex; align-items:center; gap:12px; }
+  .hbtn { font:700 11px/1 'Space Mono',monospace; letter-spacing:.08em; text-transform:uppercase; color:#fff; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.16); border-radius:99px; padding:9px 14px; cursor:pointer; white-space:nowrap; }
+  .hbtn:hover { background:rgba(255,255,255,0.16); }
+
+  .settings { max-width:1280px; margin:0 auto 16px; background:#1b1b21; border:1px solid rgba(255,255,255,0.1); border-radius:18px; padding:16px 18px; }
+  .settings h3 { margin:0 0 4px; font-size:15px; }
+  .settings p { margin:0 0 12px; color:rgba(255,255,255,0.6); font-size:12.5px; line-height:1.5; }
+  .srow { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
+  .sinput { flex:1; min-width:220px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.16); border-radius:10px; padding:10px 12px; color:#fff; font-size:13.5px; outline:none; font-family:inherit; }
+  .sinput::placeholder { color:rgba(255,255,255,0.45); }
+  .savebtn { background:#34D399; color:#0d1f17; border:none; border-radius:10px; padding:10px 16px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .ghostbtn { background:transparent; color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:10px; padding:10px 14px; font-weight:600; cursor:pointer; font-family:inherit; }
+
+  .grid { max-width:1280px; margin:0 auto; display:grid; gap:13px; grid-template-columns:repeat(6,1fr); grid-auto-rows:112px; grid-auto-flow:row dense; }
+  @media (max-width:760px){ .grid{ grid-template-columns:1fr; grid-auto-rows:auto; } .tile{ grid-column:auto !important; grid-row:auto !important; min-height:120px; } .tbody.scroll{ max-height:none !important; overflow:visible !important; } }
+
+  .tile { position:relative; border-radius:20px; padding:14px 15px; overflow:hidden; height:100%; display:flex; flex-direction:column;
+    transition: background .45s ease, box-shadow .45s ease; }
+  .tilehead { display:flex; justify-content:space-between; align-items:center; margin-bottom:9px; flex:none; }
+  .ldot { width:6px; height:6px; border-radius:99px; background:rgba(255,255,255,0.85); }
+  .lbl { font:700 9.5px/1.3 'Space Mono',monospace; letter-spacing:.16em; text-transform:uppercase; color:rgba(255,255,255,0.82); }
+  .tbody { flex:1; min-height:0; }
+  .tbody.scroll { overflow-y:auto; }
+  .tbody.scroll::-webkit-scrollbar { width:5px; } .tbody.scroll::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.25); border-radius:9px; }
+  .topright { position:absolute; top:12px; right:12px; z-index:3; display:flex; gap:6px; }
+  .iconbtn { background:rgba(255,255,255,0.16); border:1px solid rgba(255,255,255,0.22); color:#fff; border-radius:8px; width:28px; height:28px; cursor:pointer; font-size:14px; display:inline-flex; align-items:center; justify-content:center; }
+  .iconbtn:hover { background:rgba(255,255,255,0.28); }
+
+  /* edit panel */
+  .editp { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; height:100%; text-align:center; }
+  .editp .nm { font-size:14px; font-weight:700; }
+  .editp .sz { font:700 12px/1 'Space Mono',monospace; color:rgba(255,255,255,0.85); }
+  .stepg { display:flex; align-items:center; gap:6px; }
+  .stepg span { font:700 10px/1 'Space Mono',monospace; color:rgba(255,255,255,0.6); width:14px; }
+  .sbtn { background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.25); color:#fff; border-radius:7px; width:28px; height:26px; cursor:pointer; font-size:15px; }
+  .sbtn:hover { background:rgba(255,255,255,0.32); }
+
+  .tick { width:19px; height:19px; flex:none; border:1.5px solid rgba(255,255,255,0.6); border-radius:6px; display:inline-flex; align-items:center; justify-content:center; font-size:11px; color:#15151a; cursor:pointer; font-weight:800; background:transparent; transition:all .2s; }
+  .tick.on { background:#fff; border-color:#fff; }
+  .trow { display:flex; align-items:center; gap:9px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.12); }
+  .del { background:none; border:none; color:rgba(255,255,255,0.55); font-size:17px; cursor:pointer; line-height:1; padding:0 2px; }
+  .del:hover { color:#fff; }
+  .addrow { display:flex; gap:7px; }
+  .addinput { flex:1; min-width:0; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2); border-radius:9px; padding:8px 11px; color:#fff; font-size:13.5px; outline:none; font-family:inherit; }
+  .addinput::placeholder { color:rgba(255,255,255,0.6); }
+  .addinput[type=date],.addinput[type=time]{ color-scheme:dark; }
+  .addbtn { background:rgba(255,255,255,0.9); color:#15151a; border:none; border-radius:9px; width:36px; font-size:19px; font-weight:700; cursor:pointer; flex:none; }
+  .pill { display:inline-flex; align-items:center; font:700 11.5px/1 'Space Mono',monospace; color:#fff; background:rgba(255,255,255,0.16); border:1px solid rgba(255,255,255,0.22); border-radius:99px; padding:8px 13px; text-decoration:none; cursor:pointer; }
+  .pill:hover { background:rgba(255,255,255,0.26); }
+  .mark { display:inline-flex; align-items:center; gap:7px; font:700 11.5px/1 'Plus Jakarta Sans',sans-serif; border:1px solid rgba(255,255,255,0.45); background:rgba(255,255,255,0.12); color:#fff; border-radius:99px; padding:7px 12px; cursor:pointer; transition:all .25s; }
+  .mark.on { background:#fff; color:#15151a; border-color:#fff; }
+
+  /* quiz */
+  .qprompt { font-size:13px; font-weight:700; margin:8px 0 7px; color:#fff; }
+  .qopts { display:flex; flex-wrap:wrap; gap:7px; }
+  .qopt { font:600 12.5px/1.2 'Plus Jakarta Sans',sans-serif; color:#fff; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.22); border-radius:10px; padding:8px 12px; cursor:pointer; transition:all .2s; }
+  .qopt:hover:not(:disabled) { background:rgba(255,255,255,0.22); }
+  .qopt:disabled { cursor:default; }
+  .qopt.correct { background:#bbf7d0; color:#14532d; border-color:#bbf7d0; }
+  .qopt.wrong { background:#fecaca; color:#7f1d1d; border-color:#fecaca; text-decoration:line-through; }
+  .qopt.dim { opacity:0.4; }
+  .qexplain { font-size:12px; line-height:1.45; color:rgba(255,255,255,0.85); margin:8px 0 0; }
+
+  .story p { font-size:12.8px; line-height:1.55; color:rgba(255,255,255,0.92); margin:0 0 8px; }
+  .insight { background:rgba(255,255,255,0.12); border-left:3px solid rgba(255,255,255,0.6); border-radius:8px; padding:8px 11px; font-size:12.6px; line-height:1.45; margin:4px 0 10px; }
+
+  .recallrev { padding-bottom:10px; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.14); }
+  .recallrev .rtitle { font-size:11px; color:rgba(255,255,255,0.7); margin:0 0 6px; font-weight:700; }
+
+  .puBtn { background:rgba(255,255,255,0.16); border:1px solid rgba(255,255,255,0.22); color:#fff; border-radius:9px; padding:7px 0; flex:1; cursor:pointer; font-weight:700; font-size:13px; font-family:inherit; }
+  .puBtn:hover { background:rgba(255,255,255,0.26); }
+
+  .bars { display:flex; align-items:flex-end; gap:6px; height:90px; margin-top:4px; }
+  .barcol { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; height:100%; justify-content:flex-end; }
+  .bar { width:100%; border-radius:5px 5px 2px 2px; background:rgba(255,255,255,0.85); min-height:3px; transition:height .4s ease; }
+  .barval { font:700 10px/1 'Space Mono',monospace; color:rgba(255,255,255,0.85); }
+  .barday { font:700 9px/1 'Space Mono',monospace; color:rgba(255,255,255,0.55); }
+
+  .wbig { font:800 40px/1 'Plus Jakarta Sans',sans-serif; }
+  .foot { max-width:1280px; margin:24px auto 0; text-align:center; }
+  .ro { font:700 9.5px/1.4 'Space Mono',monospace; letter-spacing:.16em; text-transform:uppercase; color:rgba(255,255,255,0.6); }
+  .link { color:#fff; background:none; border:none; cursor:pointer; text-decoration:underline; padding:0; font-size:12.5px; font-family:inherit; }
+  .enter { animation: rise .5s ease both; }
+  @keyframes rise { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.10/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+/* colour pairs [sleep(muted), wake(vivid)] — all keep white text legible */
+const COL = {
+  goals:   ["#332814","#B45309"],
+  word:    ["#26294A","#4F46E5"],
+  worth:   ["#15332E","#0F766E"],
+  music:   ["#1B2E42","#0369A1"],
+  habits:  ["#2A2545","#7C3AED"],
+  pushups: ["#371F2C","#BE123C"],
+  todo:    ["#173329","#047857"],
+  weather: ["#075985","#075985"],
+  upcoming:["#115E59","#115E59"],
+  world:   ["#3730A3","#3730A3"],
+  recall:  ["#5B21B6","#5B21B6"],
+  weekly:  ["#9F1239","#9F1239"],
+  birthdays:["#A21CAF","#A21CAF"],
+};
+const WHITE="#fff", DIM="rgba(255,255,255,0.7)", FAINT="rgba(255,255,255,0.5)";
+const uid=()=> (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : "id-"+Date.now()+"-"+Math.random().toString(16).slice(2);
+
+/* localStorage */
+const load=(k,fb)=>{ try{ const v=localStorage.getItem("fefe_"+k); return v==null?fb:JSON.parse(v); }catch{ return fb; } };
+const save=(k,val)=>{ try{ localStorage.setItem("fefe_"+k, JSON.stringify(val)); }catch(e){} };
+const getKey=()=> (localStorage.getItem("fefe_apiKey")||"").trim();
+const setKey=(v)=> localStorage.setItem("fefe_apiKey", v.trim());
+
+/* dates */
+const pad=n=>String(n).padStart(2,"0");
+const dateKey=(d=new Date())=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+function addDays(key,n){ const [y,m,d]=key.split("-").map(Number); const dt=new Date(y,m-1,d); dt.setDate(dt.getDate()+n); return dateKey(dt); }
+const todayKey=dateKey();
+
+/* Claude API (your key, browser-only) */
+function extractJSON(text){ if(!text) return null; let t=text.replace(/```json|```/g,"").trim(); const s=[t.indexOf("{"),t.indexOf("[")].filter(i=>i>=0); const a=s.length?Math.min(...s):-1; const b=Math.max(t.lastIndexOf("}"),t.lastIndexOf("]")); if(a===-1||b===-1) return null; try{ return JSON.parse(t.slice(a,b+1)); }catch{ return null; } }
+async function callClaude(system,user,opts={}){
+  const key=getKey(); if(!key) return null;
+  const body={ model:"claude-sonnet-4-6", max_tokens:opts.max||1000, system, messages:[{role:"user",content:user}] };
+  if(opts.web) body.tools=[{type:"web_search_20250305", name:"web_search"}];
+  const res=await fetch("https://api.anthropic.com/v1/messages",{ method:"POST",
+    headers:{ "content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true" },
+    body:JSON.stringify(body) });
+  if(!res.ok) throw new Error("API "+res.status);
+  const data=await res.json();
+  return (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
+}
+const genWord=(avoid)=>callClaude("You output ONLY valid minified JSON, no markdown.",
+  `One moderately uncommon but useful English word a curious bilingual reader probably doesn't know, with its French equivalent and a quick synonym quiz. Avoid: ${avoid.join(", ")||"none"}. Shape:{"term_en":"","ipa":"","pos":"","def_en":"","term_fr":"","def_fr":"","quiz":{"options":["","","",""],"answer":0}}. The 4 quiz options are single words; exactly one (at index "answer") is the closest synonym to term_en. Defs under 12 words.`).then(extractJSON);
+const genMusic=(taste,avoid)=>callClaude("You output ONLY valid minified JSON, no markdown.",
+  `Recommend ONE specific, real, findable song for taste:"${taste}". Lean interesting over obvious. Don't repeat:${avoid.join(" | ")||"none"}. Shape:{"title":"","artist":"","year":"","why":""}. "why" max 15 words, warm, second-person.`).then(extractJSON);
+const genLesson=()=>callClaude("You output ONLY valid minified JSON, no markdown.",
+  `Write a short daily LESSON in story format on something genuinely worth knowing (history, science, culture, ideas, a notable person/event) — vivid and concrete, NOT trivia. Concise: exactly 2 short paragraphs (~110 words total) separated by \\n\\n, with enough relevant detail to be memorable. Then a one-line memorable insight, and a 2-question quiz to reinforce it. Shape:{"title":"","category":"","story":"","insight":"","quiz":[{"prompt":"","options":["","",""],"answer":0,"explain":""},{"prompt":"","options":["","",""],"answer":0,"explain":""}]}. Each "explain" is one sentence. "answer" is the index of the correct option.`, {max:1300}).then(extractJSON);
+async function genWorld(){
+  const out=await callClaude("You output ONLY a valid JSON array, no markdown.",
+    `Today's 5 most important world developments. For each: "headline" (max 9 words) and a substantive "summary" of 2-3 sentences explaining what happened AND why it matters / context, so a smart reader genuinely learns something. Neutral. JSON array of {"headline":"","summary":""}.`, {web:true, max:1500});
+  const arr=extractJSON(out); return Array.isArray(arr)?arr:null;
+}
+
+/* weather — Open-Meteo, no API key needed */
+const WMO={0:["Clear","☀️"],1:["Mainly clear","🌤️"],2:["Partly cloudy","⛅"],3:["Overcast","☁️"],45:["Fog","🌫️"],48:["Fog","🌫️"],51:["Light drizzle","🌦️"],53:["Drizzle","🌦️"],55:["Drizzle","🌦️"],61:["Light rain","🌧️"],63:["Rain","🌧️"],65:["Heavy rain","🌧️"],71:["Light snow","🌨️"],73:["Snow","🌨️"],75:["Snow","🌨️"],80:["Showers","🌦️"],81:["Showers","🌧️"],82:["Heavy showers","⛈️"],95:["Storm","⛈️"],96:["Storm","⛈️"],99:["Storm","⛈️"]};
+async function fetchWeather(){
+  const r=await fetch("https://api.open-meteo.com/v1/forecast?latitude=-33.8688&longitude=151.2093&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1");
+  const d=await r.json();
+  return { temp:Math.round(d.current.temperature_2m), code:d.current.weather_code, hi:Math.round(d.daily.temperature_2m_max[0]), lo:Math.round(d.daily.temperature_2m_min[0]) };
+}
+
+/* seeds */
+const SEED={
+  word:{ term_en:"Ephemeral", ipa:"/ɪˈfɛm(ə)rəl/", pos:"adj.", def_en:"lasting a very short time", term_fr:"éphémère", def_fr:"qui ne dure que très peu de temps", quiz:{ options:["Fast","Temporary","Unclear","Short"], answer:1 } },
+  worth:{ title:"The mould that started modern medicine", category:"Science · history",
+    story:"In September 1928, Alexander Fleming returned from holiday to a famously messy London lab and noticed a stray mould had contaminated one of his bacterial plates. Around the mould, the bacteria had simply dissolved. He called the substance penicillin — but couldn't purify it, and the finding sat largely ignored for over a decade.\n\nIt took a team at Oxford — Howard Florey and Ernst Chain — to turn that observation into a usable drug, just in time to save wounded soldiers in World War II. Fleming, Florey and Chain shared the 1945 Nobel Prize.",
+    insight:"Breakthroughs often begin as an accident someone bothered to take seriously — and finishing the work usually takes a different person than the one who started it.",
+    quiz:[ { prompt:"Who first noticed penicillin?", options:["Louis Pasteur","Alexander Fleming","Marie Curie"], answer:1, explain:"Fleming spotted the mould-killed bacteria in 1928." },
+           { prompt:"How fast did it become a real drug?", options:["Almost immediately","It took over a decade"], answer:1, explain:"Florey and Chain only made it usable in the early 1940s." } ] },
+  music:{ title:"Apocalypse", artist:"Cigarettes After Sex", year:"2017", why:"Hazy, slow, film-grain romance — made for your analog mood." },
+  world:[{ headline:"Add your API key for a live briefing", summary:"This tile writes a deeper 5-story world briefing every day — what happened and why it matters — once you add an Anthropic key in ⚙ Settings and press refresh. Until then it shows this note instead of inventing news." }],
+};
+
+/* spaced repetition */
+const INTERVALS=[1,3,7,16,35,90];
+const reschedule=(f,ok)=>{ const level=ok?Math.min(f.level+1,INTERVALS.length-1):Math.max(0,f.level-1); return {...f, level, nextReview:addDays(todayKey,INTERVALS[level])}; };
+function streakOf(log,id){ const dt=!!(log[todayKey]&&log[todayKey][id]); let s=0,start=dt?0:1; for(let d=start;d<400;d++){ const k=addDays(todayKey,-d); if(log[k]&&log[k][id]) s++; else break; } return s; }
+function weekCount(log,id){ let c=0; for(let d=0;d<7;d++){ const k=addDays(todayKey,-d); if(log[k]&&log[k][id]) c++; } return c; }
+
+/* atoms */
+const Readout=({children,color})=> <span className="ro" style={color?{color}:null}>{children}</span>;
+const IconBtn=({title,onClick,children,spin})=> <button title={title} onClick={onClick} className="iconbtn" style={{animation:spin?"spin .9s linear infinite":"none"}}>{children}</button>;
+const Developing=({label="Developing…"})=> <p style={{color:DIM,fontSize:12.5,margin:"6px 2px"}}>{label}</p>;
+
+function Tile({id,label,done,size,arrange,onMove,onResize,topright,children}){
+  const [sleep,wake]=COL[id]||["#26262e","#26262e"];
+  const colour=done?wake:sleep;
+  const style={ gridColumn:`span ${size.c}`, gridRow:`span ${size.r}`,
+    background:`linear-gradient(160deg, rgba(255,255,255,0.06), rgba(0,0,0,0.14)), ${colour}`,
+    border:"1px solid rgba(255,255,255,0.10)",
+    boxShadow: done ? `0 14px 36px -20px ${wake}, inset 0 1px 0 rgba(255,255,255,0.14)` : "0 14px 30px -24px #000, inset 0 1px 0 rgba(255,255,255,0.06)" };
+  return (
+    <section className="tile enter" style={style}>
+      <div className="tilehead">
+        <span style={{display:"flex",alignItems:"center",gap:7}}><span className="ldot" /><span className="lbl">{label}</span></span>
+      </div>
+      {arrange ? (
+        <div className="editp">
+          <div className="nm">{label}</div>
+          <div className="sz">{size.c}×{size.r}</div>
+          <div className="stepg"><span>↔</span><button className="sbtn" onClick={()=>onResize(id,"c",-1)}>−</button><button className="sbtn" onClick={()=>onResize(id,"c",1)}>+</button></div>
+          <div className="stepg"><span>↕</span><button className="sbtn" onClick={()=>onResize(id,"r",-1)}>−</button><button className="sbtn" onClick={()=>onResize(id,"r",1)}>+</button></div>
+          <div className="stepg"><span style={{width:"auto"}}>move</span><button className="sbtn" onClick={()=>onMove(id,-1)}>‹</button><button className="sbtn" onClick={()=>onMove(id,1)}>›</button></div>
+        </div>
+      ) : (
+        <>
+          {topright && <div className="topright">{topright}</div>}
+          <div className="tbody scroll">{children}</div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function Quiz({prompt,options,answer,explain,onDone}){
+  const [sel,setSel]=useState(null);
+  const done=sel!==null;
+  return (
+    <div>
+      {prompt && <p className="qprompt">{prompt}</p>}
+      <div className="qopts">
+        {options.map((o,i)=>{
+          let cls="qopt";
+          if(done){ if(i===answer) cls+=" correct"; else if(i===sel) cls+=" wrong"; else cls+=" dim"; }
+          return <button key={i} className={cls} disabled={done} onClick={()=>{ setSel(i); onDone&&onDone(i===answer); }}>{o}</button>;
+        })}
+      </div>
+      {done && explain && <p className="qexplain">{explain}</p>}
+    </div>
+  );
+}
+
+/* cards */
+function WordCard({word,onLearned,onRefresh,busy}){
+  if(!word) return <Developing/>;
+  return (
+    <div>
+      <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}>
+        <span style={{color:WHITE,fontSize:21,fontWeight:700}}>{word.term_en}</span>
+        {word.pos && <Readout>{word.pos}</Readout>}
+      </div>
+      {word.ipa && <span style={{color:DIM,fontSize:11.5}}>{word.ipa}</span>}
+      <p style={{color:WHITE,fontSize:13,margin:"5px 0 0",lineHeight:1.35}}>{word.def_en}</p>
+      <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid rgba(255,255,255,0.16)"}}>
+        <span style={{fontSize:14.5,fontWeight:700}}>{word.term_fr}</span>
+        <span style={{color:DIM,fontSize:12.5}}> — {word.def_fr}</span>
+      </div>
+      {word.quiz && <Quiz prompt="Quiz · what's the closest word?" options={word.quiz.options} answer={word.quiz.answer} explain={`Closest synonym for “${word.term_en}”.`} onDone={()=>onLearned(word)} />}
+    </div>
+  );
+}
+function LessonCard({lesson,onLearned,onRefresh,busy}){
+  const [answered,setAnswered]=useState(0);
+  if(!lesson) return <Developing/>;
+  const qs=lesson.quiz||[];
+  const mark=()=>{ const n=answered+1; setAnswered(n); if(n>=qs.length) onLearned(lesson); };
+  return (
+    <div>
+      <div style={{fontSize:16,fontWeight:700,lineHeight:1.2,marginBottom:2}}>{lesson.title}</div>
+      {lesson.category && <Readout>{lesson.category}</Readout>}
+      <div className="story" style={{marginTop:8}}>{(lesson.story||"").split("\n\n").map((p,i)=><p key={i}>{p}</p>)}</div>
+      {lesson.insight && <div className="insight">💡 {lesson.insight}</div>}
+      {qs.map((q,i)=><Quiz key={i} prompt={q.prompt} options={q.options} answer={q.answer} explain={q.explain} onDone={mark} />)}
+    </div>
+  );
+}
+function WeatherCard({data,busy}){
+  if(busy && !data) return <Developing label="Checking Sydney skies…" />;
+  if(!data) return <p style={{color:DIM,fontSize:12.5}}>Weather unavailable — hit ↻.</p>;
+  const [label,emoji]=WMO[data.code]||["—","🌡️"];
+  return (
+    <div style={{display:"flex",alignItems:"center",gap:14}}>
+      <span style={{fontSize:38}}>{emoji}</span>
+      <div>
+        <div style={{display:"flex",alignItems:"baseline",gap:8}}><span className="wbig">{data.temp}°</span><span style={{color:DIM,fontSize:13}}>{label}</span></div>
+        <div style={{color:DIM,fontSize:12,marginTop:2}}>Sydney · H {data.hi}° · L {data.lo}°</div>
+      </div>
+    </div>
+  );
+}
+
+/* app */
+const ALL=["goals","word","worth","music","weather","habits","pushups","todo","upcoming","world","recall","weekly","birthdays"];
+const DEFSIZE={ goals:{c:3,r:2}, word:{c:2,r:2}, worth:{c:4,r:3}, music:{c:2,r:2}, weather:{c:2,r:1}, habits:{c:2,r:2}, pushups:{c:2,r:1}, todo:{c:2,r:2}, upcoming:{c:2,r:2}, world:{c:4,r:2}, recall:{c:2,r:2}, weekly:{c:2,r:2}, birthdays:{c:2,r:1} };
+
+function App(){
+  const [arrange,setArrange]=useState(false);
+  const [showSettings,setShowSettings]=useState(false);
+  const [order,setOrder]=useState(()=>{ const o=load("widgetOrder",ALL); const s=Array.isArray(o)?o.filter(x=>ALL.includes(x)):[]; return [...s,...ALL.filter(x=>!s.includes(x))]; });
+  const [sizes,setSizes]=useState(()=>({...DEFSIZE, ...load("sizes",{})}));
+
+  const [goalsLog,setGoalsLog]=useState(()=>load("goalsLog",{}));
+  const [todos,setTodos]=useState(()=>load("todos",[]));
+  const [habits,setHabits]=useState(()=>load("habits",[{id:uid(),name:"Sport"},{id:uid(),name:"Read"}]));
+  const [habitLog,setHabitLog]=useState(()=>load("habitLog",{}));
+  const [ritualLog,setRitualLog]=useState(()=>load("ritualLog",{}));
+  const [pushLog,setPushLog]=useState(()=>load("pushLog",{}));
+  const [events,setEvents]=useState(()=>load("events",[]));
+  const [birthdays,setBirthdays]=useState(()=>load("birthdays",[]));
+  const [recallList,setRecallList]=useState(()=>load("recall",[]));
+  const [taste,setTaste]=useState(()=>load("taste","analog / vintage texture, French and indie, film-photography mood, warm lo-fi, jazz-adjacent, nothing too obvious"));
+  const [keyField,setKeyField]=useState(()=>getKey());
+
+  const [daily,setDaily]=useState(()=>load("daily:"+todayKey, SEED));
+  const [weather,setWeather]=useState(()=>load("weather:"+todayKey,null));
+  const [busy,setBusy]=useState({word:false,worth:false,music:false,world:false,weather:false});
+  const [weekly,setWeekly]=useState(null);
+  const [showWeekly,setShowWeekly]=useState(false);
+  const [now,setNow]=useState(new Date());
+  useEffect(()=>{ const t=setInterval(()=>setNow(new Date()),1000*30); return ()=>clearInterval(t); },[]);
+
+  const goals=goalsLog[todayKey]||[];
+  const rToday=ritualLog[todayKey]||{};
+  const hToday=habitLog[todayKey]||{};
+  const pToday=pushLog[todayKey]||0;
+
+  const setGoals=(arr)=>{ const m={...goalsLog,[todayKey]:arr}; setGoalsLog(m); save("goalsLog",m); };
+  const persistTodos=v=>{ setTodos(v); save("todos",v); };
+  const persistHabits=v=>{ setHabits(v); save("habits",v); };
+  const persistEvents=v=>{ setEvents(v); save("events",v); };
+  const persistBirthdays=v=>{ setBirthdays(v); save("birthdays",v); };
+  const persistRecall=v=>{ setRecallList(v); save("recall",v); };
+  const persistOrder=v=>{ setOrder(v); save("widgetOrder",v); };
+  const toggleHabit=id=>{ const day={...hToday,[id]:!hToday[id]}; const m={...habitLog,[todayKey]:day}; setHabitLog(m); save("habitLog",m); };
+  const setRitual=(k)=>{ if(rToday[k]) return; const day={...rToday,[k]:true}; const m={...ritualLog,[todayKey]:day}; setRitualLog(m); save("ritualLog",m); };
+  const addPush=n=>{ const v=Math.max(0,pToday+n); const m={...pushLog,[todayKey]:v}; setPushLog(m); save("pushLog",m); };
+  const setPushExact=n=>{ const v=Math.max(0,n|0); const m={...pushLog,[todayKey]:v}; setPushLog(m); save("pushLog",m); };
+  const writeDaily=useCallback((patch)=>{ setDaily(p=>{ const next={...p,...patch}; save("daily:"+todayKey,next); return next; }); },[]);
+
+  const noKeyNudge=()=>{ if(!getKey()){ setShowSettings(true); return true; } return false; };
+  const refreshWord=async()=>{ if(noKeyNudge())return; setBusy(b=>({...b,word:true})); try{ const h=load("wordHistory",[]); const w=await genWord(h.slice(-12)); if(w){ writeDaily({word:w}); save("wordHistory",[...h,w.term_en].slice(-40)); } }catch(e){ alert("Word refresh failed: "+e.message);} setBusy(b=>({...b,word:false})); };
+  const refreshMusic=async()=>{ if(noKeyNudge())return; setBusy(b=>({...b,music:true})); try{ const h=load("musicHistory",[]); const m=await genMusic(taste,h.slice(-25)); if(m){ writeDaily({music:m}); save("musicHistory",[...h,`${m.title} — ${m.artist}`].slice(-60)); } }catch(e){ alert("Music refresh failed: "+e.message);} setBusy(b=>({...b,music:false})); };
+  const refreshLesson=async()=>{ if(noKeyNudge())return; setBusy(b=>({...b,worth:true})); try{ const l=await genLesson(); if(l) writeDaily({worth:l}); }catch(e){ alert("Lesson refresh failed: "+e.message);} setBusy(b=>({...b,worth:false})); };
+  const refreshWorld=async()=>{ if(noKeyNudge())return; setBusy(b=>({...b,world:true})); try{ const n=await genWorld(); if(n) writeDaily({world:n}); }catch(e){ alert("World refresh failed: "+e.message);} setBusy(b=>({...b,world:false})); };
+  const refreshWeather=async()=>{ setBusy(b=>({...b,weather:true})); try{ const w=await fetchWeather(); setWeather(w); save("weather:"+todayKey,w); }catch(e){} setBusy(b=>({...b,weather:false})); };
+
+  useEffect(()=>{ if(!weather) refreshWeather(); /* once */ // eslint-disable-next-line
+  },[]);
+
+  useEffect(()=>{
+    if(!getKey()) return;
+    if(load("daily:"+todayKey,null)) return;
+    (async()=>{
+      setBusy(b=>({...b,word:true,worth:true,music:true,world:true}));
+      try{
+        const [w,l,m,n]=await Promise.all([ genWord(load("wordHistory",[]).slice(-12)), genLesson(), genMusic(taste,load("musicHistory",[]).slice(-25)), genWorld() ]);
+        const next={ word:w||SEED.word, worth:l||SEED.worth, music:m||SEED.music, world:n||SEED.world };
+        setDaily(next); save("daily:"+todayKey,next);
+        if(w) save("wordHistory",[...load("wordHistory",[]),w.term_en].slice(-40));
+        if(m) save("musicHistory",[...load("musicHistory",[]),`${m.title} — ${m.artist}`].slice(-60));
+      }catch(e){}
+      setBusy(b=>({...b,word:false,worth:false,music:false,world:false}));
+    })();
+  // eslint-disable-next-line
+  },[]);
+
+  /* recall scheduling */
+  const learnWord=(w)=>{ setRitual("word"); if(w&&w.quiz && !recallList.some(x=>x.type==="word"&&x.addedOn===todayKey)){
+    persistRecall([...recallList,{ id:uid(), type:"word", addedOn:todayKey, level:0, nextReview:addDays(todayKey,INTERVALS[0]), title:"Word · "+w.term_en, quiz:{ prompt:`Closest word to “${w.term_en}”?`, options:w.quiz.options, answer:w.quiz.answer, explain:`“${w.term_en}” — ${w.def_en}.` } }]); } };
+  const learnLesson=(l)=>{ setRitual("worth"); if(l&&l.quiz&&l.quiz[0] && !recallList.some(x=>x.type==="lesson"&&x.addedOn===todayKey)){
+    const q=l.quiz[0]; persistRecall([...recallList,{ id:uid(), type:"lesson", addedOn:todayKey, level:0, nextReview:addDays(todayKey,INTERVALS[0]), title:l.title, quiz:{ prompt:q.prompt, options:q.options, answer:q.answer, explain:q.explain } }]); } };
+  const gradeRecall=(item,ok)=>{ persistRecall(recallList.map(x=>x.id===item.id?reschedule(x,ok):x)); };
+
+  const moveWidget=(id,dir)=>{ const i=order.indexOf(id),j=i+dir; if(j<0||j>=order.length)return; const next=[...order]; [next[i],next[j]]=[next[j],next[i]]; persistOrder(next); };
+  const resizeWidget=(id,axis,delta)=>{ setSizes(prev=>{ const cur=prev[id]||{c:2,r:1}; let v=(axis==="c"?cur.c:cur.r)+delta; v=Math.max(1,Math.min(axis==="c"?6:4,v)); const next={...prev,[id]:{...cur,[axis]:v}}; save("sizes",next); return next; }); };
+
+  const saveSettings=()=>{ setKey(keyField); save("taste",taste); try{ localStorage.removeItem("fefe_daily:"+todayKey); }catch(e){} location.reload(); };
+  const resetLayout=()=>{ save("widgetOrder",ALL); save("sizes",DEFSIZE); setOrder(ALL); setSizes(DEFSIZE); };
+
+  const buildWeekly=()=>{
+    const days=[]; for(let i=6;i>=0;i--) days.push(addDays(todayKey,-i));
+    const labels=days.map(k=>{ const [y,m,d]=k.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("en-GB",{weekday:"short"}).slice(0,2); });
+    const push=days.map(k=>pushLog[k]||0); const pushMax=Math.max(...push,1), pushTotal=push.reduce((a,b)=>a+b,0);
+    const habitRows=habits.map(h=>({ name:h.name, streak:streakOf(habitLog,h.id), week:weekCount(habitLog,h.id) }));
+    const cutoff=addDays(todayKey,-6);
+    const tasksDone=todos.filter(t=>t.done&&t.completedAt&&t.completedAt>=cutoff).length;
+    const learned=recallList.filter(f=>f.addedOn>=cutoff).length;
+    let goalsDone=0; days.forEach(k=>{ (goalsLog[k]||[]).forEach(g=>{ if(g.done) goalsDone++; }); });
+    setWeekly({ labels, push, pushMax, pushTotal, habitRows, tasksDone, learned, goalsDone });
+  };
+  const openWeekly=()=>{ if(!showWeekly) buildWeekly(); setShowWeekly(s=>!s); };
+
+  const dueFacts=recallList.filter(f=>f.nextReview<=todayKey && f.addedOn!==todayKey).slice(0,6);
+  const todayBdays=birthdays.filter(b=>Number(b.month)===now.getMonth()+1 && Number(b.day)===now.getDate());
+  const greeting=now.getHours()<12?"Bonjour":now.getHours()<18?"Bon aprèm":"Bonsoir";
+  const goalsLit=goals.length>0 && goals.every(g=>g.done);
+  const habitsLit=habits.length>0 && habits.every(h=>hToday[h.id]);
+  const todoLit=todos.length>0 && todos.every(t=>t.done);
+  const litTotal=3 + habits.length + goals.length;
+  const litDone=(rToday.word?1:0)+(rToday.worth?1:0)+(rToday.music?1:0)+habits.filter(h=>hToday[h.id]).length+goals.filter(g=>g.done).length;
+  const pctLit=litTotal?Math.round(litDone/litTotal*100):0;
+  const upcoming=[...events].filter(e=>e.date>=todayKey).sort((a,b)=>a.date.localeCompare(b.date)||(a.time||"").localeCompare(b.time||""));
+  const dayLabel=k=>{ if(k===todayKey)return"Today"; if(k===addDays(todayKey,1))return"Tomorrow"; const [y,m,d]=k.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}); };
+  const sz=id=>sizes[id]||DEFSIZE[id]||{c:2,r:1};
+  const T=(id,label,done,topright,children)=> <Tile id={id} label={label} done={done} size={sz(id)} arrange={arrange} onMove={moveWidget} onResize={resizeWidget} topright={topright}>{children}</Tile>;
+
+  const widgets={
+    goals: T("goals","Today's goals",goalsLit,null,
+      <>
+        <GoalInput onAdd={text=>setGoals([...goals,{id:uid(),text,done:false}])} />
+        <div style={{marginTop:6}}>
+          {goals.length===0 && <p style={{color:DIM,fontSize:12.5,margin:"6px 2px"}}>What would make today a win? Add a goal or two.</p>}
+          {goals.map(g=>(
+            <div key={g.id} className="trow">
+              <button className={"tick"+(g.done?" on":"")} onClick={()=>setGoals(goals.map(x=>x.id===g.id?{...x,done:!x.done}:x))}>{g.done?"✓":""}</button>
+              <span style={{flex:1,color:g.done?DIM:WHITE,textDecoration:g.done?"line-through":"none",fontSize:14}}>{g.text}</span>
+              <button className="del" onClick={()=>setGoals(goals.filter(x=>x.id!==g.id))}>×</button>
+            </div>
+          ))}
+        </div>
+      </>
+    ),
+    word: T("word","Mot du jour",!!rToday.word, <IconBtn title="Another word" onClick={refreshWord} spin={busy.word}>↻</IconBtn>,
+      <WordCard word={daily.word} onLearned={learnWord} busy={busy.word} /> ),
+    worth: T("worth","Worth knowing · lesson",!!rToday.worth, <IconBtn title="Another lesson" onClick={refreshLesson} spin={busy.worth}>↻</IconBtn>,
+      <LessonCard lesson={daily.worth} onLearned={learnLesson} busy={busy.worth} /> ),
+    music: T("music","One song",!!rToday.music, <IconBtn title="Another pick" onClick={refreshMusic} spin={busy.music}>↻</IconBtn>,
+      daily.music ? (
+        <div>
+          <div style={{fontSize:17,fontWeight:700,lineHeight:1.2}}>{daily.music.title}</div>
+          <div style={{fontSize:13,marginTop:1,opacity:0.95}}>{daily.music.artist}{daily.music.year?` · ${daily.music.year}`:""}</div>
+          <p style={{color:DIM,fontSize:12,margin:"7px 0 9px",lineHeight:1.35}}>{daily.music.why}</p>
+          <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
+            <a className="pill" target="_blank" rel="noreferrer" href={`https://music.apple.com/search?term=${encodeURIComponent(daily.music.title+" "+daily.music.artist)}`}> Apple Music ↗</a>
+            <button className={"mark"+(rToday.music?" on":"")} onClick={()=>setRitual("music")}><span className={"tick sm"+(rToday.music?" on":"")} style={{width:16,height:16,fontSize:10}}>{rToday.music?"✓":""}</span>{rToday.music?"Heard":"Listened"}</button>
+          </div>
+        </div>
+      ) : <Developing/> ),
+    weather: T("weather","Weather · Sydney",true, <IconBtn title="Refresh weather" onClick={refreshWeather} spin={busy.weather}>↻</IconBtn>,
+      <WeatherCard data={weather} busy={busy.weather} /> ),
+    habits: T("habits","Habits & sport",habitsLit,null,
+      <>
+        <div style={{display:"flex",flexDirection:"column",gap:0,marginBottom:9}}>
+          {habits.length===0 && <p style={{color:DIM,fontSize:12.5,margin:2}}>Add a habit to start a streak.</p>}
+          {habits.map(h=>{ const on=!!hToday[h.id]; const st=streakOf(habitLog,h.id); return (
+            <div key={h.id} className="trow">
+              <button className={"tick"+(on?" on":"")} onClick={()=>toggleHabit(h.id)}>{on?"✓":""}</button>
+              <span style={{flex:1,color:on?WHITE:DIM,fontSize:13.5}}>{h.name}</span>
+              <span style={{font:"700 10.5px/1 'Space Mono',monospace",color:DIM}}>{st>0?`🔥${st}`:"—"}</span>
+              <button className="del" onClick={()=>persistHabits(habits.filter(x=>x.id!==h.id))}>×</button>
+            </div>
+          ); })}
+        </div>
+        <HabitInput onAdd={name=>persistHabits([...habits,{id:uid(),name}])} />
+      </>
+    ),
+    pushups: T("pushups","Push-ups · today",pToday>0,null,
+      <div style={{display:"flex",alignItems:"center",gap:12}}>
+        <span style={{font:"800 32px/1 'Plus Jakarta Sans',sans-serif"}}>{pToday}</span>
+        <div style={{display:"flex",gap:6,flex:1}}>
+          <button className="puBtn" onClick={()=>addPush(5)}>+5</button>
+          <button className="puBtn" onClick={()=>addPush(10)}>+10</button>
+          <button className="puBtn" onClick={()=>addPush(20)}>+20</button>
+          <button className="puBtn" style={{flex:"none",width:34}} onClick={()=>setPushExact(0)}>↺</button>
+        </div>
+      </div>
+    ),
+    todo: T("todo","To-do",todoLit,null,
+      <>
+        <TodoInput onAdd={text=>persistTodos([...todos,{id:uid(),text,done:false}])} />
+        <div style={{marginTop:5}}>
+          {todos.length===0 && <p style={{color:DIM,fontSize:12.5,margin:"6px 2px"}}>Clear list. Add the next thing.</p>}
+          {todos.map(t=>(
+            <div key={t.id} className="trow">
+              <button className={"tick"+(t.done?" on":"")} onClick={()=>persistTodos(todos.map(x=>x.id===t.id?{...x,done:!x.done,completedAt:!x.done?todayKey:null}:x))}>{t.done?"✓":""}</button>
+              <span style={{flex:1,color:t.done?DIM:WHITE,textDecoration:t.done?"line-through":"none",fontSize:13.5}}>{t.text}</span>
+              <button className="del" onClick={()=>persistTodos(todos.filter(x=>x.id!==t.id))}>×</button>
+            </div>
+          ))}
+        </div>
+      </>
+    ),
+    upcoming: T("upcoming","Upcoming",true,null,
+      <>
+        <EventInput onAdd={ev=>persistEvents([...events,{id:uid(),...ev}])} />
+        <div style={{marginTop:8}}>
+          {upcoming.length===0 && <p style={{color:DIM,fontSize:12.5,margin:"4px 2px"}}>Add appointments and deadlines with a date.</p>}
+          {Object.entries(upcoming.reduce((g,e)=>{ (g[e.date]=g[e.date]||[]).push(e); return g; },{})).map(([d,list])=>(
+            <div key={d} style={{marginBottom:9}}>
+              <Readout color={d===todayKey?"#fff":FAINT}>{dayLabel(d)}</Readout>
+              <div style={{marginTop:4,display:"flex",flexDirection:"column",gap:4}}>
+                {list.map(e=>(
+                  <div key={e.id} style={{display:"flex",gap:8,alignItems:"baseline"}}>
+                    <span style={{font:"700 10.5px/1.3 'Space Mono',monospace",color:DIM,minWidth:42}}>{e.time||"—"}</span>
+                    <span style={{flex:1,fontSize:13,lineHeight:1.3}}>{e.title}</span>
+                    <button className="del" onClick={()=>persistEvents(events.filter(x=>x.id!==e.id))}>×</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </>
+    ),
+    world: T("world","World briefing · today",true, <IconBtn title="Refresh briefing" onClick={refreshWorld} spin={busy.world}>↻</IconBtn>,
+      <>
+        {busy.world && <Developing label="Writing today's briefing…" />}
+        <div style={{display:"flex",flexDirection:"column",gap:13}}>
+          {(daily.world||[]).map((n,i)=>(
+            <div key={i}>
+              <div style={{fontSize:14.5,fontWeight:700,lineHeight:1.25}}>{n.headline}</div>
+              <div style={{color:DIM,fontSize:12.8,lineHeight:1.5,marginTop:3}}>{n.summary}</div>
+            </div>
+          ))}
+        </div>
+      </>
+    ),
+    recall: T("recall",`Recall · ${dueFacts.length} due`,true,null,
+      dueFacts.length===0 ? (
+        <p style={{color:DIM,fontSize:12.5,margin:"4px 2px",lineHeight:1.45}}>Nothing due. Words and lessons you finish come back here as quick quizzes on a 1/3/7/16-day schedule, so they actually stick.</p>
+      ) : (
+        <div>
+          {dueFacts.map(item=>(
+            <div key={item.id} className="recallrev">
+              <p className="rtitle">{item.title}</p>
+              <Quiz prompt={item.quiz.prompt} options={item.quiz.options} answer={item.quiz.answer} explain={item.quiz.explain} onDone={(ok)=>gradeRecall(item,ok)} />
+            </div>
+          ))}
+        </div>
+      )
+    ),
+    weekly: T("weekly","Weekly review",true,null,
+      !showWeekly ? (
+        <><p style={{color:DIM,fontSize:12.5,margin:"0 2px 10px",lineHeight:1.4}}>Your last 7 days — push-ups, streaks, goals, and what you finished.</p><button className="pill" onClick={openWeekly}>See this week →</button></>
+      ) : weekly ? (
+        <div style={{display:"flex",flexDirection:"column",gap:13}}>
+          <div>
+            <Readout>Push-ups · {weekly.pushTotal} total</Readout>
+            <div className="bars">
+              {weekly.push.map((v,i)=>(
+                <div key={i} className="barcol"><span className="barval">{v||""}</span><div className="bar" style={{height:`${Math.max(3,(v/weekly.pushMax)*100)}%`}} /><span className="barday">{weekly.labels[i]}</span></div>
+              ))}
+            </div>
+          </div>
+          <div><Readout>Habits</Readout><div style={{marginTop:5,display:"flex",flexDirection:"column",gap:3}}>{weekly.habitRows.length===0 && <span style={{color:DIM,fontSize:12.5}}>No habits yet.</span>}{weekly.habitRows.map((h,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12.5}}><span>{h.name}</span><span style={{color:DIM,fontFamily:"'Space Mono',monospace",fontSize:11.5}}>{h.streak>0?`🔥${h.streak} · `:""}{h.week}/7</span></div>))}</div></div>
+          <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+            <div><div style={{fontSize:22,fontWeight:700}}>{weekly.goalsDone}</div><Readout>goals hit</Readout></div>
+            <div><div style={{fontSize:22,fontWeight:700}}>{weekly.tasksDone}</div><Readout>tasks done</Readout></div>
+            <div><div style={{fontSize:22,fontWeight:700}}>{weekly.learned}</div><Readout>learned</Readout></div>
+          </div>
+          <button className="link" onClick={()=>setShowWeekly(false)} style={{alignSelf:"flex-start"}}>Hide</button>
+        </div>
+      ) : <Developing label="Crunching your week…" />
+    ),
+    birthdays: T("birthdays","Birthdays",true,null,
+      <>
+        {todayBdays.length>0 && (
+          <div style={{background:"rgba(255,255,255,0.16)",border:"1px solid rgba(255,255,255,0.4)",borderRadius:11,padding:"9px 11px",marginBottom:9}}>
+            <span style={{fontSize:13}}>🎂 Today: <b>{todayBdays.map(b=>b.name).join(", ")}</b></span>
+          </div>
+        )}
+        <BirthdayInput onAdd={b=>persistBirthdays([...birthdays,{id:uid(),...b}])} />
+        <div style={{marginTop:5}}>
+          {birthdays.length===0 && <p style={{color:DIM,fontSize:12.5,margin:"6px 2px"}}>Add people so you never miss the day.</p>}
+          {[...birthdays].sort((a,b)=>a.month-b.month||a.day-b.day).map(b=>(
+            <div key={b.id} className="trow">
+              <span style={{flex:1,fontSize:13.5}}>{b.name}</span>
+              <span style={{color:DIM,fontSize:11.5,fontFamily:"'Space Mono',monospace"}}>{pad(b.day)}/{pad(b.month)}</span>
+              <button className="del" onClick={()=>persistBirthdays(birthdays.filter(x=>x.id!==b.id))}>×</button>
+            </div>
+          ))}
+        </div>
+      </>
+    ),
+  };
+
+  return (
+    <div className="wrap">
+      <header className="hero">
+        <div className="heroL">
+          <div className="clock">{pad(now.getHours())}:{pad(now.getMinutes())}</div>
+          <div className="heroMeta">
+            <span className="greet">{greeting}, Fefe.</span>
+            <Readout>{now.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"}).toUpperCase()} · {pctLit}% LIT</Readout>
+          </div>
+        </div>
+        <div className="heroR">
+          <button className="hbtn" onClick={()=>setShowSettings(s=>!s)}>⚙ Settings</button>
+          <button className="hbtn" onClick={()=>setArrange(a=>!a)}>{arrange?"✓ Done" : "Arrange"}</button>
+        </div>
+      </header>
+
+      {showSettings && (
+        <div className="settings">
+          <h3>Settings</h3>
+          <p>Your Anthropic API key powers the four AI tiles (word, lesson, song, world). It's stored only in this browser and sent only to Anthropic — never to anyone else. Get one at console.anthropic.com.</p>
+          <div className="srow"><input className="sinput" type="password" placeholder="sk-ant-…  (paste your Anthropic API key)" value={keyField} onChange={e=>setKeyField(e.target.value)} /></div>
+          <div className="srow"><input className="sinput" placeholder="Music taste (used for song picks)" value={taste} onChange={e=>setTaste(e.target.value)} /></div>
+          <div className="srow">
+            <button className="savebtn" onClick={saveSettings}>Save & refresh</button>
+            <button className="ghostbtn" onClick={resetLayout}>Reset layout</button>
+            <span style={{color:FAINT,fontSize:12}}>Host this file (Netlify/Vercel/GitHub Pages) so the AI tiles can reach Anthropic.</span>
+          </div>
+        </div>
+      )}
+
+      {arrange && <p style={{maxWidth:1280,margin:"0 auto 12px",color:DIM,fontSize:12.5}}>Resize with ↔ / ↕, reorder with ‹ ›. Tap “Done” when finished.</p>}
+
+      <div className="grid">{order.filter(id=>widgets[id]).map(id=> <React.Fragment key={id}>{widgets[id]}</React.Fragment> )}</div>
+
+      <footer className="foot"><Readout>Tiles brighten as you finish them · saved automatically in this browser · best in landscape</Readout></footer>
+    </div>
+  );
+}
+
+/* inputs */
+function GoalInput({onAdd}){ const [v,setV]=useState(""); const s=()=>{ const t=v.trim(); if(t){ onAdd(t); setV(""); } }; return <div className="addrow"><input className="addinput" placeholder="Add a goal for today…" value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>e.key==="Enter"&&s()} /><button className="addbtn" onClick={s}>+</button></div>; }
+function TodoInput({onAdd}){ const [v,setV]=useState(""); const s=()=>{ const t=v.trim(); if(t){ onAdd(t); setV(""); } }; return <div className="addrow"><input className="addinput" placeholder="Add a task…" value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>e.key==="Enter"&&s()} /><button className="addbtn" onClick={s}>+</button></div>; }
+function HabitInput({onAdd}){ const [v,setV]=useState(""); const s=()=>{ const t=v.trim(); if(t){ onAdd(t); setV(""); } }; return <div className="addrow"><input className="addinput" placeholder="Add a habit…" value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>e.key==="Enter"&&s()} /><button className="addbtn" onClick={s}>+</button></div>; }
+function EventInput({onAdd}){
+  const [title,setTitle]=useState(""); const [date,setDate]=useState(""); const [time,setTime]=useState("");
+  const s=()=>{ if(title.trim()&&date){ onAdd({title:title.trim(),date,time}); setTitle(""); setDate(""); setTime(""); } };
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+      <div className="addrow"><input className="addinput" placeholder="Event…" value={title} onChange={e=>setTitle(e.target.value)} onKeyDown={e=>e.key==="Enter"&&s()} /></div>
+      <div className="addrow"><input className="addinput" type="date" value={date} onChange={e=>setDate(e.target.value)} /><input className="addinput" type="time" style={{flex:"none",width:96}} value={time} onChange={e=>setTime(e.target.value)} /><button className="addbtn" onClick={s}>+</button></div>
+    </div>
+  );
+}
+function BirthdayInput({onAdd}){
+  const [name,setName]=useState(""); const [day,setDay]=useState(""); const [month,setMonth]=useState("");
+  const s=()=>{ const d=Number(day),m=Number(month); if(name.trim()&&d>=1&&d<=31&&m>=1&&m<=12){ onAdd({name:name.trim(),day:d,month:m}); setName(""); setDay(""); setMonth(""); } };
+  return (<div className="addrow"><input className="addinput" style={{flex:2}} placeholder="Name" value={name} onChange={e=>setName(e.target.value)} /><input className="addinput" style={{width:42,flex:"none",textAlign:"center"}} placeholder="DD" value={day} onChange={e=>setDay(e.target.value.replace(/\D/g,"").slice(0,2))} /><input className="addinput" style={{width:42,flex:"none",textAlign:"center"}} placeholder="MM" value={month} onChange={e=>setMonth(e.target.value.replace(/\D/g,"").slice(0,2))} onKeyDown={e=>e.key==="Enter"&&s()} /><button className="addbtn" onClick={s}>+</button></div>);
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
