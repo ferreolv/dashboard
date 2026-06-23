@@ -156,7 +156,7 @@ const COL = {
   weekly:   {p:"#FBDBE8", v:"#9F1239", d:"#9F1239"},
   birthdays:{p:"#FBD9F0", v:"#A21CAF", d:"#A21CAF"},
 };
-const TASK = new Set(["goals","word","worth","music","pushups","todo","world","birthdays"]);
+const TASK = new Set(["goals","word","worth","music","pushups","habits","world","birthdays","weather","weekly","recall"]);
 const uid=()=> (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : "id-"+Date.now()+"-"+Math.random().toString(16).slice(2);
 
 function themeVars(id, done){
@@ -327,17 +327,17 @@ function WeatherCard({data,busy}){
 
 /* sizing */
 const ROW=112, GAP=13;
-const DEFSIZE={ goals:{c:3,r:2}, word:{c:2,r:2}, worth:{c:4,r:3}, music:{c:2,r:2}, weather:{c:2,r:1}, pushups:{c:2,r:1}, todo:{c:2,r:2}, upcoming:{c:2,r:2}, world:{c:4,r:2}, recall:{c:2,r:2}, weekly:{c:2,r:2}, birthdays:{c:2,r:1} };
+const DEFSIZE={ goals:{c:3,r:2}, word:{c:2,r:2}, worth:{c:4,r:3}, music:{c:2,r:2}, weather:{c:2,r:1}, pushups:{c:2,r:1}, habits:{c:2,r:2}, world:{c:4,r:2}, recall:{c:2,r:2}, weekly:{c:3,r:2}, birthdays:{c:2,r:1} };
 const ALL=Object.keys(DEFSIZE);
 
-function Tile({id,label,done,size,cols,edit,lifted,topright,onMoveStart,onResizeStart,children}){
+function Tile({id,label,done,size,cols,edit,lifted,topright,onTap,onMoveStart,onResizeStart,children}){
   const t=themeVars(id,done);
   const span={ gridColumn:`span ${Math.min(size.c,cols)}`, gridRow:`span ${size.r}` };
   return (
     <section data-tileid={id} className={"tile enter"+(edit?" editing":"")+(lifted?" lift":"")} style={{...t,...span}}>
       <div className="tilehead"><span style={{display:"flex",alignItems:"center",gap:7}}><span className="ldot"/><span className="lbl">{label}</span></span></div>
       {topright && !edit && <div className="topright">{topright}</div>}
-      <div className={"tbody"}><div className={"content"+(edit?" locked":"")}>{children}</div></div>
+      <div className={"tbody"} onClick={!edit&&onTap?onTap:undefined} style={!edit&&onTap?{cursor:"pointer"}:null}><div className={"content"+(edit?" locked":"")}>{children}</div></div>
       {edit && <>
         <div className="draglayer" onPointerDown={(e)=>onMoveStart(e,id)} />
         <div className="sizebadge">{Math.min(size.c,cols)}×{size.r}</div>
@@ -357,8 +357,10 @@ function App(){
 
   const [goalsLog,setGoalsLog]=useState(()=>load("goalsLog",{}));
   const [todos,setTodos]=useState(()=>load("todos",[]));
-  const [habits,setHabits]=useState(()=>load("habits",[{id:uid(),name:"Sport"},{id:uid(),name:"Read"}]));
+  const [habits,setHabits]=useState(()=>load("habits",[{id:uid(),name:"Cold shower"},{id:uid(),name:"Read"},{id:uid(),name:"Sport"}]));
   const [habitLog,setHabitLog]=useState(()=>load("habitLog",{}));
+  const [freezes,setFreezes]=useState(()=>load("freezes",{}));
+  const [icesSpent,setIcesSpent]=useState(()=>load("icesSpent",0));
   const [ritualLog,setRitualLog]=useState(()=>load("ritualLog",{}));
   const [pushLog,setPushLog]=useState(()=>load("pushLog",{}));
   const [events,setEvents]=useState(()=>load("events",[]));
@@ -372,7 +374,6 @@ function App(){
   const sampleMode=!daily;
   const [weather,setWeather]=useState(()=>load("weather",null));
   const [busy,setBusy]=useState({word:false,worth:false,music:false,world:false,weather:false});
-  const [weekly,setWeekly]=useState(null); const [showWeekly,setShowWeekly]=useState(false);
   const [now,setNow]=useState(new Date());
   useEffect(()=>{ const t=setInterval(()=>setNow(new Date()),15000); return ()=>clearInterval(t); },[]);
   useEffect(()=>{ const onR=()=>{ const w=window.innerWidth; setCols(w>=1000?6:w>=640?4:2); }; window.addEventListener("resize",onR); return ()=>window.removeEventListener("resize",onR); },[]);
@@ -483,28 +484,40 @@ function App(){
     }catch(e){ alert("Couldn't read that file: "+e.message); } };
     r.readAsText(file); };
 
-  const buildWeekly=()=>{ const days14=[]; for(let i=13;i>=0;i--) days14.push(addDays(todayKey,-i));
-    const push=days14.map(k=>pushLog[k]||0); const pushTotal=push.reduce((a,b)=>a+b,0); const pushAvg=Math.round(pushTotal/14);
-    const cutoff=addDays(todayKey,-6);
-    const tasksDone=todos.filter(t=>t.done&&t.completedAt&&t.completedAt>=cutoff).length;
-    const learned=recallList.filter(f=>f.addedOn>=cutoff).length;
-    let goalsDone=0; for(let i=0;i<7;i++){ const k=addDays(todayKey,-i); (goalsLog[k]||[]).forEach(g=>{ if(g.done) goalsDone++; }); }
-    setWeekly({ push, pushTotal, pushAvg, tasksDone, learned, goalsDone }); };
-  const openWeekly=()=>{ if(!showWeekly) buildWeekly(); setShowWeekly(s=>!s); };
+  /* ---- gamification: perfect days, flame streaks (with ice freezes), ice spending ---- */
+  const ritualOK=k=>{ const r=ritualLog[k]||{}; return !!(r.word&&r.worth&&r.music&&r.world); };
+  const habitsOK=k=> habits.length===0 ? false : habits.every(h=> habitLog[k] && habitLog[k][h.id]);
+  const goalsOK=k=> (goalsLog[k]||[]).every(g=>g.done);
+  const isPerfectDay=k=> ritualOK(k) && habitsOK(k) && goalsOK(k);
+  const countPerfect=()=>{ let n=0; for(let i=0;i<200;i++){ if(isPerfectDay(addDays(todayKey,-i))) n++; } return n; };
+  const habitStreak=(id)=>{ const fr=freezes[id]||[]; const ok=k=> (habitLog[k]&&habitLog[k][id]) || fr.indexOf(k)>=0;
+    let s=0, start=ok(todayKey)?0:1; for(let d=start; d<400; d++){ const k=addDays(todayKey,-d); if(ok(k)) s++; else break; } return s; };
+  const iceState=()=>{ const perfect=countPerfect(); const earned=Math.floor(perfect/2); return { perfect, earned, available:Math.max(0,earned-icesSpent), halfPending:perfect%2===1 }; };
+  const coverGap=(id)=>{ const st=iceState(); if(st.available<=0){ alert("No ice yet. You earn half an ice per 100% day — two perfect days make one ice."); return; }
+    const fr=freezes[id]||[]; const ok=k=> (habitLog[k]&&habitLog[k][id]) || fr.indexOf(k)>=0;
+    let d=0; while(d<90 && ok(addDays(todayKey,-d))) d++;
+    if(d>=90){ alert("No recent gap to cover for this habit — your streak is already unbroken."); return; }
+    const gap=addDays(todayKey,-d);
+    const nf={...freezes,[id]:[...fr,gap]}; setFreezes(nf); save("freezes",nf);
+    const ns=icesSpent+1; setIcesSpent(ns); save("icesSpent",ns); };
+
 
   const dueFacts=recallList.filter(f=>f.nextReview<=todayKey && f.addedOn!==todayKey).slice(0,6);
   const todayBdays=birthdays.filter(b=>Number(b.month)===now.getMonth()+1 && Number(b.day)===now.getDate());
   const greeting=now.getHours()<12?"Bonjour":now.getHours()<18?"Bon aprèm":"Bonsoir";
   const goalsLit=goals.length>0 && goals.every(g=>g.done);
   const habitsLit=habits.length>0 && habits.every(h=>hToday[h.id]);
-  const todoLit=todos.length>0 && todos.every(t=>t.done);
-  const litTotal=4 + goals.length;
-  const litDone=(rToday.word?1:0)+(rToday.worth?1:0)+(rToday.music?1:0)+(rToday.world?1:0)+goals.filter(g=>g.done).length;
+  const litTotal=4 + habits.length + goals.length;
+  const litDone=(rToday.word?1:0)+(rToday.worth?1:0)+(rToday.music?1:0)+(rToday.world?1:0)+habits.filter(h=>hToday[h.id]).length+goals.filter(g=>g.done).length;
   const pctLit=litTotal?Math.round(litDone/litTotal*100):0;
-  const upcoming=[...events].filter(e=>e.date>=todayKey).sort((a,b)=>a.date.localeCompare(b.date)||(a.time||"").localeCompare(b.time||""));
+  const ice=iceState();
+  const push14=(()=>{ const a=[]; for(let i=13;i>=0;i--) a.push(pushLog[addDays(todayKey,-i)]||0); return a; })();
+  const pushTotal14=push14.reduce((a,b)=>a+b,0); const pushAvg14=Math.round(pushTotal14/14);
+  let goalsHit7=0; for(let i=0;i<7;i++){ (goalsLog[addDays(todayKey,-i)]||[]).forEach(g=>{ if(g.done) goalsHit7++; }); }
+  const learned7=recallList.filter(f=>f.addedOn>=addDays(todayKey,-6)).length;
   const dayLabel=k=>{ if(k===todayKey)return"Today"; if(k===addDays(todayKey,1))return"Tomorrow"; const [y,m,d]=k.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}); };
   const sz=id=>sizes[id]||DEFSIZE[id]||{c:2,r:1};
-  const T=(id,label,done,topright,children)=> <Tile key={id} id={id} label={label} done={done} size={sz(id)} cols={cols} edit={edit} lifted={lifted===id} topright={topright} onMoveStart={onMoveStart} onResizeStart={onResizeStart}>{children}</Tile>;
+  const T=(id,label,done,topright,children,onTap)=> <Tile key={id} id={id} label={label} done={done} size={sz(id)} cols={cols} edit={edit} lifted={lifted===id} topright={topright} onTap={onTap} onMoveStart={onMoveStart} onResizeStart={onResizeStart}>{children}</Tile>;
 
   const widgets={
     goals: T("goals","Today's goals",goalsLit,null,<>
@@ -533,8 +546,8 @@ function App(){
         </div>
         {sampleMode && <p className="samplehint">Sample — add a key in ⚙ for a fresh discovery daily.</p>}
       </div>) : <Note>Loading…</Note>),
-    weather: T("weather","Weather · Sydney",false, <IconBtn title="Refresh" onClick={refreshWeather} spin={busy.weather}>↻</IconBtn>,
-      <WeatherCard data={weather} busy={busy.weather} />),
+    weather: T("weather","Weather · Sydney",!!rToday.weather, <IconBtn title="Refresh" onClick={refreshWeather} spin={busy.weather}>↻</IconBtn>,
+      <WeatherCard data={weather} busy={busy.weather} />, ()=>setRitual("weather")),
     pushups: T("pushups","Push-ups · today",pToday>0,null,
       <div style={{display:"flex",alignItems:"center",gap:12}}>
         <span style={{font:"800 30px/1 'Plus Jakarta Sans',sans-serif"}}>{pToday}</span>
@@ -545,32 +558,17 @@ function App(){
           <button className="puBtn" style={{flex:"none",width:34}} onClick={()=>setPushExact(0)}>↺</button>
         </div>
       </div>),
-    todo: T("todo","To-do",todoLit,null,<>
-      <TodoInput onAdd={text=>persistTodos([...todos,{id:uid(),text,done:false}])} />
-      <div style={{marginTop:5}}>
-        {todos.length===0 && <Note>Clear list. Add the next thing.</Note>}
-        {todos.map(t=>(<div key={t.id} className="trow">
-          <button className={"tick"+(t.done?" on":"")} onClick={()=>persistTodos(todos.map(x=>x.id===t.id?{...x,done:!x.done,completedAt:!x.done?todayKey:null}:x))}>{t.done?"✓":""}</button>
-          <span style={{flex:1,textDecoration:t.done?"line-through":"none",opacity:t.done?0.7:1,fontSize:13.5}}>{t.text}</span>
-          <button className="del" onClick={()=>persistTodos(todos.filter(x=>x.id!==t.id))}>×</button>
-        </div>))}
-      </div></>),
-    upcoming: T("upcoming","Upcoming",false,null,<>
-      <EventInput onAdd={ev=>persistEvents([...events,{id:uid(),...ev}])} />
-      <div style={{marginTop:8}}>
-        {upcoming.length===0 && <Note>Add appointments and deadlines with a date.</Note>}
-        {Object.entries(upcoming.reduce((g,e)=>{ (g[e.date]=g[e.date]||[]).push(e); return g; },{})).map(([d,list])=>(
-          <div key={d} style={{marginBottom:9}}>
-            <span className="lbl" style={d===todayKey?{color:"var(--ink)"}:null}>{dayLabel(d)}</span>
-            <div style={{marginTop:4,display:"flex",flexDirection:"column",gap:4}}>
-              {list.map(e=>(<div key={e.id} style={{display:"flex",gap:8,alignItems:"baseline"}}>
-                <span className="muted" style={{font:"700 10.5px/1.3 'Space Mono',monospace",minWidth:42}}>{e.time||"—"}</span>
-                <span style={{flex:1,fontSize:13,lineHeight:1.3}}>{e.title}</span>
-                <button className="del" onClick={()=>persistEvents(events.filter(x=>x.id!==e.id))}>×</button>
-              </div>))}
-            </div>
-          </div>))}
-      </div></>),
+    habits: T("habits","Daily habits",habitsLit,null,<>
+      <div>
+        {habits.length===0 && <Note>Add the things you want to do every day.</Note>}
+        {habits.map(h=>{ const on=!!hToday[h.id]; const st=habitStreak(h.id); return (<div key={h.id} className="trow">
+          <button className={"tick"+(on?" on":"")} onClick={()=>toggleHabit(h.id)}>{on?"✓":""}</button>
+          <span style={{flex:1,fontSize:14,opacity:on?1:0.9}}>{h.name}</span>
+          {st>0 && <span style={{font:"700 11px/1 'Space Mono',monospace"}} className="muted">🔥{st}</span>}
+          <button className="del" onClick={()=>persistHabits(habits.filter(x=>x.id!==h.id))}>×</button>
+        </div>); })}
+      </div>
+      <div style={{marginTop:8}}><HabitInput onAdd={name=>persistHabits([...habits,{id:uid(),name}])} /></div></>),
     world: T("world","World briefing · today",!!rToday.world, <IconBtn title="Refresh briefing" onClick={refreshWorld} spin={busy.world}>↻</IconBtn>,<>
       {busy.world && <Note>Writing today's briefing…</Note>}
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -580,27 +578,38 @@ function App(){
         </div>))}
       </div>
       {(view.world&&view.world.length>0&&!busy.world) && <div style={{marginTop:11}}><button className={"mark"+(rToday.world?" on":"")} onClick={()=>setRitual("world")}><span className={"tick sm"+(rToday.world?" on":"")}>{rToday.world?"✓":""}</span>{rToday.world?"Read":"Mark read"}</button></div>}</>),
-    recall: T("recall",`Recall · ${dueFacts.length} due`,false,null,
-      dueFacts.length===0 ? <Note>Nothing due. Words and lessons you finish return here as quick quizzes on a 1/3/7/16-day schedule, so they stick.</Note>
-      : <div>{dueFacts.map(item=>(<div key={item.id} className="reviewItem">
-          <p className="rtitle">{item.title}</p>
-          <Quiz prompt={item.quiz.prompt} options={item.quiz.options} answer={item.quiz.answer} explain={item.quiz.explain} onDone={ok=>gradeRecall(item,ok)} />
-        </div>))}</div>),
-    weekly: T("weekly","Weekly review",false,null,
-      !showWeekly ? (<><Note>Push-up progress over two weeks, plus what you finished this week.</Note><button className="pill" onClick={openWeekly}>See review →</button></>)
-      : weekly ? (<div style={{display:"flex",flexDirection:"column",gap:13}}>
-          <div><Readout>Push-ups · 14 days · {weekly.pushTotal} total · ~{weekly.pushAvg}/day</Readout>
-            <LineChart values={weekly.push} />
-            <div style={{display:"flex",justifyContent:"space-between",marginTop:1}}><span className="barday">2 weeks ago</span><span className="barday">1 week</span><span className="barday">today</span></div>
+    recall: T("recall","Recall",!!rToday.recall,null,
+      <RecallCard due={dueFacts} onGrade={gradeRecall} onComplete={()=>setRitual("recall")} />),
+    weekly: T("weekly","Weekly review",!!rToday.weekly,null,
+      <div style={{display:"flex",flexDirection:"column",gap:13}}>
+        <div><Readout>Push-ups · 14 days · {pushTotal14} total · ~{pushAvg14}/day</Readout>
+          <LineChart values={push14} />
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:1}}><span className="barday">2 weeks ago</span><span className="barday">1 week</span><span className="barday">today</span></div>
+        </div>
+        <div>
+          <Readout>Habit streaks · 🧊 {ice.available} ice{ice.halfPending?" · ½ earned":""}</Readout>
+          <div style={{marginTop:5,display:"flex",flexDirection:"column",gap:4}}>
+            {habits.length===0 && <span className="muted" style={{fontSize:12.5}}>No habits yet.</span>}
+            {habits.map(h=>{ const st=habitStreak(h.id); return (<div key={h.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:12.5,gap:8}}>
+              <span style={{flex:1}}>{h.name}</span>
+              <span className="muted" style={{fontFamily:"'Space Mono',monospace",fontSize:11.5,minWidth:34,textAlign:"right"}}>🔥{st}</span>
+              <button className="pill" style={{padding:"5px 9px",fontSize:10.5}} title="Use one ice to cover a missed day for this habit" onClick={(e)=>{e.stopPropagation(); coverGap(h.id);}}>❄ cover</button>
+            </div>); })}
           </div>
-          <div style={{display:"flex",gap:16,flexWrap:"wrap"}}><div><div className="statn">{weekly.goalsDone}</div><Readout>goals hit</Readout></div><div><div className="statn">{weekly.tasksDone}</div><Readout>tasks done</Readout></div><div><div className="statn">{weekly.learned}</div><Readout>learned</Readout></div></div>
-          <button className="link" onClick={()=>setShowWeekly(false)} style={{alignSelf:"flex-start"}}>Hide</button>
-        </div>) : <Note>Crunching your weeks…</Note>),
-    birthdays: T("birthdays","Birthdays",todayBdays.length>0,null,
-      <BirthdaysCard birthdays={birthdays} today={todayBdays}
+        </div>
+        <div style={{display:"flex",gap:16,flexWrap:"wrap",alignItems:"flex-start"}}>
+          <div><div className="statn">🏆 {ice.perfect}</div><Readout>perfect days total</Readout></div>
+          <div><div className="statn">{goalsHit7}</div><Readout>goals hit · 7d</Readout></div>
+          <div><div className="statn">{learned7}</div><Readout>learned · 7d</Readout></div>
+        </div>
+        <p className="muted" style={{fontSize:11,lineHeight:1.45,margin:0}}>Every 100% day earns ½ an ice. Two perfect days = 1 ice, which covers one missed day for one habit so your flame survives.</p>
+      </div>, ()=>setRitual("weekly")),
+    birthdays: T("birthdays","Birthdays",!!rToday.birthday,null,
+      <BirthdaysCard birthdays={birthdays} today={todayBdays} celebrated={!!rToday.birthday}
+        onCelebrate={()=>setRitual("birthday")}
         onAdd={b=>persistBirthdays([...birthdays,{id:uid(),...b}])}
         onRemove={id=>persistBirthdays(birthdays.filter(x=>x.id!==id))}
-        onImport={importVcf} />),
+        onImport={importVcf} />, ()=>setRitual("birthday")),
   };
 
   return (
@@ -659,6 +668,17 @@ function BirthdayInput({onAdd}){ const [name,setName]=useState(""); const [day,s
   const s=()=>{ const d=Number(day),m=Number(month); if(name.trim()&&d>=1&&d<=31&&m>=1&&m<=12){ onAdd({name:name.trim(),day:d,month:m}); setName(""); setDay(""); setMonth(""); } };
   return (<div className="addrow"><input className="addinput" style={{flex:2}} placeholder="Name" value={name} onChange={e=>setName(e.target.value)} /><input className="addinput" style={{width:42,flex:"none",textAlign:"center"}} placeholder="DD" value={day} onChange={e=>setDay(e.target.value.replace(/\D/g,"").slice(0,2))} /><input className="addinput" style={{width:42,flex:"none",textAlign:"center"}} placeholder="MM" value={month} onChange={e=>setMonth(e.target.value.replace(/\D/g,"").slice(0,2))} onKeyDown={e=>e.key==="Enter"&&s()} /><button className="addbtn" onClick={s}>+</button></div>); }
 
+function RecallCard({due,onGrade,onComplete}){
+  const [snap]=useState(()=>due);
+  const [answered,setAnswered]=useState({});
+  useEffect(()=>{ if(snap.length===0) onComplete(); /* eslint-disable-next-line */ },[]);
+  const handle=(item,ok)=>{ onGrade(item,ok); setAnswered(a=>{ const n={...a,[item.id]:true}; if(Object.keys(n).length>=snap.length) onComplete(); return n; }); };
+  if(snap.length===0) return <Note>Nothing due. Words and lessons you finish return here as quick quizzes on a 1/3/7/16-day schedule, so they stick.</Note>;
+  return <div>{snap.map(item=>(<div key={item.id} className="reviewItem">
+    <p className="rtitle">{item.title}</p>
+    <Quiz prompt={item.quiz.prompt} options={item.quiz.options} answer={item.quiz.answer} explain={item.quiz.explain} onDone={ok=>handle(item,ok)} />
+  </div>))}</div>;
+}
 function LineChart({values}){
   const W=300,H=84,P=9, n=values.length, max=Math.max(...values,1);
   const x=i=> P + (n<=1?0:(i*(W-2*P)/(n-1)));
@@ -680,7 +700,7 @@ function nextBirthday(list){
     const days=Math.round((d-base)/86400000); if(days<bd){ bd=days; best={...b,days}; } });
   return best;
 }
-function BirthdaysCard({birthdays,today,onAdd,onRemove,onImport}){
+function BirthdaysCard({birthdays,today,celebrated,onCelebrate,onAdd,onRemove,onImport}){
   const [open,setOpen]=useState(false);
   const fileRef=useRef(null);
   const has=today.length>0; const next=nextBirthday(birthdays);
@@ -690,15 +710,16 @@ function BirthdaysCard({birthdays,today,onAdd,onRemove,onImport}){
         <div style={{fontSize:30,lineHeight:1}}>🎂</div>
         <div style={{fontSize:18,fontWeight:800,marginTop:6,lineHeight:1.15}}>{today.map(b=>b.name).join(", ")}</div>
         <div className="muted" style={{fontSize:12.5,marginTop:3}}>Birthday today — send a message.</div>
+        <button className={"mark"+(celebrated?" on":"")} style={{marginTop:10}} onClick={(e)=>{e.stopPropagation(); onCelebrate();}}><span className={"tick sm"+(celebrated?" on":"")}>{celebrated?"✓":""}</span>{celebrated?"Celebrated":"Mark celebrated"}</button>
       </div>) : (<div>
         <div style={{fontSize:15,fontWeight:700}}>No birthdays today</div>
         {next && <div className="muted" style={{fontSize:12.5,marginTop:4}}>Next: {next.name} · {pad(next.day)}/{pad(next.month)} · {next.days===0?"today":next.days===1?"tomorrow":"in "+next.days+" days"}</div>}
       </div>)}
-      <button className="link" style={{marginTop:12}} onClick={()=>setOpen(true)}>All birthdays & import →</button>
+      <div><button className="link" style={{marginTop:12}} onClick={(e)=>{e.stopPropagation(); setOpen(true);}}>All birthdays & import →</button></div>
     </div>
   );
   return (
-    <div>
+    <div onClick={(e)=>e.stopPropagation()}>
       <div style={{display:"flex",gap:7,marginBottom:8,flexWrap:"wrap",alignItems:"center"}}>
         <button className="pill" onClick={()=>fileRef.current&&fileRef.current.click()}>↧ Import (.vcf)</button>
         <button className="link" onClick={()=>setOpen(false)}>Done</button>
