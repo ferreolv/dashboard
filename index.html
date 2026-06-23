@@ -3,6 +3,12 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<meta name="theme-color" content="#E4E4E9" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Daily" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234F46E5'/%3E%3Ccircle cx='32' cy='32' r='13' fill='none' stroke='white' stroke-width='5'/%3E%3C/svg%3E" />
 <title>Fefe · Daily Panel</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
@@ -150,7 +156,7 @@ const COL = {
   weekly:   {p:"#FBDBE8", v:"#9F1239", d:"#9F1239"},
   birthdays:{p:"#FBD9F0", v:"#A21CAF", d:"#A21CAF"},
 };
-const TASK = new Set(["goals","word","worth","music","habits","pushups","todo"]);
+const TASK = new Set(["goals","word","worth","music","pushups","todo","world","birthdays"]);
 const uid=()=> (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : "id-"+Date.now()+"-"+Math.random().toString(16).slice(2);
 
 function themeVars(id, done){
@@ -173,6 +179,10 @@ const todayKey=dateKey();
 
 /* Claude API (browser key) */
 function extractJSON(text){ if(!text) return null; let t=text.replace(/```json|```/g,"").trim(); const s=[t.indexOf("{"),t.indexOf("[")].filter(i=>i>=0); const a=s.length?Math.min(...s):-1; const b=Math.max(t.lastIndexOf("}"),t.lastIndexOf("]")); if(a===-1||b===-1) return null; try{ return JSON.parse(t.slice(a,b+1)); }catch{ return null; } }
+function clean(s){ if(s==null) return ""; return String(s)
+  .replace(/【[^】]*】/g,"").replace(/\[[0-9]+\]/g,"").replace(/\((?:https?:[^)]+)\)/g,"")
+  .replace(/https?:\/\/\S+/g,"").replace(/[*_`#>\\]+/g,"").replace(/\s+([.,;:!?])/g,"$1")
+  .replace(/\s{2,}/g," ").trim(); }
 async function callClaude(system,user,opts={}){
   const key=getKey(); if(!key) throw new Error("no-key");
   const body={ model:"claude-sonnet-4-6", max_tokens:opts.max||1000, system, messages:[{role:"user",content:user}] };
@@ -186,13 +196,13 @@ async function callClaude(system,user,opts={}){
 }
 const genWord=(avoid)=>callClaude("You output ONLY valid minified JSON, no markdown.",
   `One moderately uncommon but useful English word a curious bilingual reader probably doesn't know, with its French equivalent and a quick synonym quiz. Avoid: ${avoid.join(", ")||"none"}. Shape:{"term_en":"","ipa":"","pos":"","def_en":"","term_fr":"","def_fr":"","quiz":{"options":["","","",""],"answer":0}}. The 4 quiz options are single words; exactly one (index "answer") is the closest synonym. Defs under 12 words.`).then(extractJSON);
-const genMusic=(taste,avoid)=>callClaude("You output ONLY valid minified JSON, no markdown.",
-  `Recommend ONE specific, real, findable song for taste:"${taste}". Lean interesting over obvious. Don't repeat:${avoid.join(" | ")||"none"}. Shape:{"title":"","artist":"","year":"","why":""}. "why" max 15 words, warm, second-person.`).then(extractJSON);
+const genMusic=(avoid)=>callClaude("You output ONLY valid minified JSON, no markdown.",
+  `Recommend ONE song that is critically or technically excellent yet UNDERRATED — something most people don't know but that a musicologist or serious critic would admire (craft, innovation, influence, musicianship). Deliberately vary widely across genres, eras and cultures every time (e.g. modal jazz, West African highlife, ambient, post-punk, bossa nova, baroque, experimental electronic, Appalachian folk, dub). Real, findable track. Avoid anything mainstream or famous, and do NOT repeat: ${avoid.join(" | ")||"none"}. Shape:{"title":"","artist":"","year":"","genre":"","why":""}. "genre" is the specific style; "why" (max 18 words) says what makes it special and why it's overlooked.`).then(extractJSON);
 const genLesson=()=>callClaude("You output ONLY valid minified JSON, no markdown.",
   `Write a short daily LESSON in story format on something genuinely worth knowing (history, science, culture, ideas, a notable person/event) — vivid, concrete, NOT trivia. Exactly 2 short paragraphs (~110 words total) separated by \\n\\n, with enough detail to be memorable. Then a one-line memorable insight and a 2-question quiz. Shape:{"title":"","category":"","story":"","insight":"","quiz":[{"prompt":"","options":["","",""],"answer":0,"explain":""},{"prompt":"","options":["","",""],"answer":0,"explain":""}]}. Each "explain" one sentence; "answer" is the correct option index.`, {max:1300}).then(extractJSON);
 async function genWorld(){
   const out=await callClaude("You output ONLY a valid JSON array, no markdown.",
-    `Today's 5 most important world developments. For each: "headline" (max 9 words) and a substantive "summary" of 2-3 sentences explaining what happened AND why it matters, so a smart reader genuinely learns something. Neutral. JSON array of {"headline":"","summary":""}.`, {web:true, max:1500});
+    `Today's 5 most important world developments. For each: "headline" (max 9 words) and a substantive "summary" of 2-3 sentences explaining what happened AND why it matters. Write plain prose only — absolutely NO markdown, NO asterisks, NO citation markers or footnote numbers like [1], NO source names in brackets, NO URLs, NO special symbols. Neutral and clear. JSON array of {"headline":"","summary":""}.`, {web:true, max:1600});
   const arr=extractJSON(out); return Array.isArray(arr)?arr:null;
 }
 
@@ -317,7 +327,7 @@ function WeatherCard({data,busy}){
 
 /* sizing */
 const ROW=112, GAP=13;
-const DEFSIZE={ goals:{c:3,r:2}, word:{c:2,r:2}, worth:{c:4,r:3}, music:{c:2,r:2}, weather:{c:2,r:1}, habits:{c:2,r:2}, pushups:{c:2,r:1}, todo:{c:2,r:2}, upcoming:{c:2,r:2}, world:{c:4,r:2}, recall:{c:2,r:2}, weekly:{c:2,r:2}, birthdays:{c:2,r:1} };
+const DEFSIZE={ goals:{c:3,r:2}, word:{c:2,r:2}, worth:{c:4,r:3}, music:{c:2,r:2}, weather:{c:2,r:1}, pushups:{c:2,r:1}, todo:{c:2,r:2}, upcoming:{c:2,r:2}, world:{c:4,r:2}, recall:{c:2,r:2}, weekly:{c:2,r:2}, birthdays:{c:2,r:1} };
 const ALL=Object.keys(DEFSIZE);
 
 function Tile({id,label,done,size,cols,edit,lifted,topright,onMoveStart,onResizeStart,children}){
@@ -354,7 +364,6 @@ function App(){
   const [events,setEvents]=useState(()=>load("events",[]));
   const [birthdays,setBirthdays]=useState(()=>load("birthdays",[]));
   const [recallList,setRecallList]=useState(()=>load("recall",[]));
-  const [taste,setTaste]=useState(()=>load("taste","analog / vintage texture, French and indie, film-photography mood, warm lo-fi, jazz-adjacent, nothing too obvious"));
   const [keyField,setKeyField]=useState(()=>getKey());
 
   const [daily,setDaily]=useState(()=>load("daily:"+todayKey, null));
@@ -384,7 +393,7 @@ function App(){
 
   const goSettings=()=>setShowSettings(true);
   const refreshWord=async()=>{ if(!getKey())return goSettings(); setBusy(b=>({...b,word:true})); try{ const h=load("wordHistory",[]); const w=await genWord(h.slice(-12)); if(w){ writeDaily({word:w}); save("wordHistory",[...h,w.term_en].slice(-40)); } }catch(e){ alert("Word: "+e.message);} setBusy(b=>({...b,word:false})); };
-  const refreshMusic=async()=>{ if(!getKey())return goSettings(); setBusy(b=>({...b,music:true})); try{ const h=load("musicHistory",[]); const m=await genMusic(taste,h.slice(-25)); if(m){ writeDaily({music:m}); save("musicHistory",[...h,`${m.title} — ${m.artist}`].slice(-60)); } }catch(e){ alert("Music: "+e.message);} setBusy(b=>({...b,music:false})); };
+  const refreshMusic=async()=>{ if(!getKey())return goSettings(); setBusy(b=>({...b,music:true})); try{ const h=load("musicHistory",[]); const m=await genMusic(h.slice(-30)); if(m){ writeDaily({music:m}); save("musicHistory",[...h,`${m.title} — ${m.artist}`].slice(-80)); } }catch(e){ alert("Music: "+e.message);} setBusy(b=>({...b,music:false})); };
   const refreshLesson=async()=>{ if(!getKey())return goSettings(); setBusy(b=>({...b,worth:true})); try{ const l=await genLesson(); if(l) writeDaily({worth:l}); }catch(e){ alert("Lesson: "+e.message);} setBusy(b=>({...b,worth:false})); };
   const refreshWorld=async()=>{ if(!getKey())return goSettings(); setBusy(b=>({...b,world:true})); try{ const n=await genWorld(); if(n) writeDaily({world:n}); }catch(e){ alert("World: "+e.message);} setBusy(b=>({...b,world:false})); };
   const refreshWeather=async()=>{ setBusy(b=>({...b,weather:true})); try{ const w=await fetchWeather(); setWeather(w); save("weather",w); }catch(e){} setBusy(b=>({...b,weather:false})); };
@@ -392,7 +401,7 @@ function App(){
   useEffect(()=>{ if(!weather || (Date.now()-(weather.at||0))>3*3600*1000) refreshWeather(); /* eslint-disable-next-line */ },[]);
   useEffect(()=>{ if(!getKey()) return; if(load("daily:"+todayKey,null)) return;
     (async()=>{ setBusy(b=>({...b,word:true,worth:true,music:true,world:true}));
-      try{ const [w,l,m,n]=await Promise.all([ genWord(load("wordHistory",[]).slice(-12)), genLesson(), genMusic(taste,load("musicHistory",[]).slice(-25)), genWorld() ]);
+      try{ const [w,l,m,n]=await Promise.all([ genWord(load("wordHistory",[]).slice(-12)), genLesson(), genMusic(load("musicHistory",[]).slice(-30)), genWorld() ]);
         const next={ word:w||SEED.word, worth:l||SEED.worth, music:m||SEED.music, world:n||SEED.world }; setDaily(next); save("daily:"+todayKey,next);
         if(w) save("wordHistory",[...load("wordHistory",[]),w.term_en].slice(-40)); if(m) save("musicHistory",[...load("musicHistory",[]),`${m.title} — ${m.artist}`].slice(-60));
       }catch(e){} setBusy(b=>({...b,word:false,worth:false,music:false,world:false})); })();
@@ -461,9 +470,8 @@ function App(){
     drag.current=null;
   };
 
-  const saveSettings=()=>{ localStorage.setItem("fefe_apiKey",keyField.trim()); save("taste",taste); try{ localStorage.removeItem("fefe_daily:"+todayKey);}catch(e){} location.reload(); };
+  const saveSettings=()=>{ localStorage.setItem("fefe_apiKey",keyField.trim()); try{ localStorage.removeItem("fefe_daily:"+todayKey);}catch(e){} location.reload(); };
   const resetLayout=()=>{ save("widgetOrder",ALL); save("sizes",DEFSIZE); setOrder(ALL); setSizes(DEFSIZE); };
-  const vcfRef=useRef(null);
   const importVcf=(file)=>{ if(!file) return; const r=new FileReader();
     r.onload=()=>{ try{
       const list=parseVcf(String(r.result));
@@ -475,15 +483,13 @@ function App(){
     }catch(e){ alert("Couldn't read that file: "+e.message); } };
     r.readAsText(file); };
 
-  const buildWeekly=()=>{ const days=[]; for(let i=6;i>=0;i--) days.push(addDays(todayKey,-i));
-    const labels=days.map(k=>{ const [y,m,d]=k.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("en-GB",{weekday:"short"}).slice(0,2); });
-    const push=days.map(k=>pushLog[k]||0); const pushMax=Math.max(...push,1), pushTotal=push.reduce((a,b)=>a+b,0);
-    const habitRows=habits.map(h=>({ name:h.name, streak:streakOf(habitLog,h.id), week:weekCount(habitLog,h.id) }));
+  const buildWeekly=()=>{ const days14=[]; for(let i=13;i>=0;i--) days14.push(addDays(todayKey,-i));
+    const push=days14.map(k=>pushLog[k]||0); const pushTotal=push.reduce((a,b)=>a+b,0); const pushAvg=Math.round(pushTotal/14);
     const cutoff=addDays(todayKey,-6);
     const tasksDone=todos.filter(t=>t.done&&t.completedAt&&t.completedAt>=cutoff).length;
     const learned=recallList.filter(f=>f.addedOn>=cutoff).length;
-    let goalsDone=0; days.forEach(k=>{ (goalsLog[k]||[]).forEach(g=>{ if(g.done) goalsDone++; }); });
-    setWeekly({ labels, push, pushMax, pushTotal, habitRows, tasksDone, learned, goalsDone }); };
+    let goalsDone=0; for(let i=0;i<7;i++){ const k=addDays(todayKey,-i); (goalsLog[k]||[]).forEach(g=>{ if(g.done) goalsDone++; }); }
+    setWeekly({ push, pushTotal, pushAvg, tasksDone, learned, goalsDone }); };
   const openWeekly=()=>{ if(!showWeekly) buildWeekly(); setShowWeekly(s=>!s); };
 
   const dueFacts=recallList.filter(f=>f.nextReview<=todayKey && f.addedOn!==todayKey).slice(0,6);
@@ -492,8 +498,8 @@ function App(){
   const goalsLit=goals.length>0 && goals.every(g=>g.done);
   const habitsLit=habits.length>0 && habits.every(h=>hToday[h.id]);
   const todoLit=todos.length>0 && todos.every(t=>t.done);
-  const litTotal=3 + habits.length + goals.length;
-  const litDone=(rToday.word?1:0)+(rToday.worth?1:0)+(rToday.music?1:0)+habits.filter(h=>hToday[h.id]).length+goals.filter(g=>g.done).length;
+  const litTotal=4 + goals.length;
+  const litDone=(rToday.word?1:0)+(rToday.worth?1:0)+(rToday.music?1:0)+(rToday.world?1:0)+goals.filter(g=>g.done).length;
   const pctLit=litTotal?Math.round(litDone/litTotal*100):0;
   const upcoming=[...events].filter(e=>e.date>=todayKey).sort((a,b)=>a.date.localeCompare(b.date)||(a.time||"").localeCompare(b.time||""));
   const dayLabel=k=>{ if(k===todayKey)return"Today"; if(k===addDays(todayKey,1))return"Tomorrow"; const [y,m,d]=k.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}); };
@@ -519,26 +525,16 @@ function App(){
       view.music ? (<div>
         <div style={{fontSize:17,fontWeight:700,lineHeight:1.2}}>{view.music.title}</div>
         <div style={{fontSize:13,marginTop:1,opacity:0.9}}>{view.music.artist}{view.music.year?` · ${view.music.year}`:""}</div>
+        {view.music.genre && <div style={{marginTop:5}}><span className="lbl">{view.music.genre}</span></div>}
         <p className="muted" style={{fontSize:12,margin:"7px 0 9px",lineHeight:1.35}}>{view.music.why}</p>
         <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
           <a className="pill" target="_blank" rel="noreferrer" href={`https://music.apple.com/search?term=${encodeURIComponent(view.music.title+" "+view.music.artist)}`}>Apple Music ↗</a>
           <button className={"mark"+(rToday.music?" on":"")} onClick={()=>setRitual("music")}><span className={"tick sm"+(rToday.music?" on":"")}>{rToday.music?"✓":""}</span>{rToday.music?"Heard":"Listened"}</button>
         </div>
-        {sampleMode && <p className="samplehint">Sample — add a key in ⚙ for a new pick daily.</p>}
+        {sampleMode && <p className="samplehint">Sample — add a key in ⚙ for a fresh discovery daily.</p>}
       </div>) : <Note>Loading…</Note>),
     weather: T("weather","Weather · Sydney",false, <IconBtn title="Refresh" onClick={refreshWeather} spin={busy.weather}>↻</IconBtn>,
       <WeatherCard data={weather} busy={busy.weather} />),
-    habits: T("habits","Habits & sport",habitsLit,null,<>
-      <div style={{marginBottom:9}}>
-        {habits.length===0 && <Note>Add a habit to start a streak.</Note>}
-        {habits.map(h=>{ const on=!!hToday[h.id]; const st=streakOf(habitLog,h.id); return (<div key={h.id} className="trow">
-          <button className={"tick"+(on?" on":"")} onClick={()=>toggleHabit(h.id)}>{on?"✓":""}</button>
-          <span style={{flex:1,fontSize:13.5,opacity:on?1:0.85}}>{h.name}</span>
-          <span style={{font:"700 10.5px/1 'Space Mono',monospace"}} className="muted">{st>0?`🔥${st}`:"—"}</span>
-          <button className="del" onClick={()=>persistHabits(habits.filter(x=>x.id!==h.id))}>×</button>
-        </div>); })}
-      </div>
-      <HabitInput onAdd={name=>persistHabits([...habits,{id:uid(),name}])} /></>),
     pushups: T("pushups","Push-ups · today",pToday>0,null,
       <div style={{display:"flex",alignItems:"center",gap:12}}>
         <span style={{font:"800 30px/1 'Plus Jakarta Sans',sans-serif"}}>{pToday}</span>
@@ -575,14 +571,15 @@ function App(){
             </div>
           </div>))}
       </div></>),
-    world: T("world","World briefing · today",false, <IconBtn title="Refresh briefing" onClick={refreshWorld} spin={busy.world}>↻</IconBtn>,<>
+    world: T("world","World briefing · today",!!rToday.world, <IconBtn title="Refresh briefing" onClick={refreshWorld} spin={busy.world}>↻</IconBtn>,<>
       {busy.world && <Note>Writing today's briefing…</Note>}
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         {(view.world||[]).map((n,i)=>(<div key={i}>
-          <div style={{fontSize:14.5,fontWeight:700,lineHeight:1.25}}>{n.headline}</div>
-          <div className="muted" style={{fontSize:12.8,lineHeight:1.5,marginTop:3}}>{n.summary}</div>
+          <div style={{fontSize:14.5,fontWeight:700,lineHeight:1.25}}>{clean(n.headline)}</div>
+          <div className="muted" style={{fontSize:12.8,lineHeight:1.5,marginTop:3}}>{clean(n.summary)}</div>
         </div>))}
-      </div></>),
+      </div>
+      {(view.world&&view.world.length>0&&!busy.world) && <div style={{marginTop:11}}><button className={"mark"+(rToday.world?" on":"")} onClick={()=>setRitual("world")}><span className={"tick sm"+(rToday.world?" on":"")}>{rToday.world?"✓":""}</span>{rToday.world?"Read":"Mark read"}</button></div>}</>),
     recall: T("recall",`Recall · ${dueFacts.length} due`,false,null,
       dueFacts.length===0 ? <Note>Nothing due. Words and lessons you finish return here as quick quizzes on a 1/3/7/16-day schedule, so they stick.</Note>
       : <div>{dueFacts.map(item=>(<div key={item.id} className="reviewItem">
@@ -590,30 +587,20 @@ function App(){
           <Quiz prompt={item.quiz.prompt} options={item.quiz.options} answer={item.quiz.answer} explain={item.quiz.explain} onDone={ok=>gradeRecall(item,ok)} />
         </div>))}</div>),
     weekly: T("weekly","Weekly review",false,null,
-      !showWeekly ? (<><Note>Your last 7 days — push-ups, streaks, goals, and what you finished.</Note><button className="pill" onClick={openWeekly}>See this week →</button></>)
+      !showWeekly ? (<><Note>Push-up progress over two weeks, plus what you finished this week.</Note><button className="pill" onClick={openWeekly}>See review →</button></>)
       : weekly ? (<div style={{display:"flex",flexDirection:"column",gap:13}}>
-          <div><Readout>Push-ups · {weekly.pushTotal} total</Readout>
-            <div className="bars">{weekly.push.map((v,i)=>(<div key={i} className="barcol"><span className="barval">{v||""}</span><div className="bar" style={{height:`${Math.max(3,(v/weekly.pushMax)*100)}%`}}/><span className="barday">{weekly.labels[i]}</span></div>))}</div>
+          <div><Readout>Push-ups · 14 days · {weekly.pushTotal} total · ~{weekly.pushAvg}/day</Readout>
+            <LineChart values={weekly.push} />
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:1}}><span className="barday">2 weeks ago</span><span className="barday">1 week</span><span className="barday">today</span></div>
           </div>
-          <div><Readout>Habits</Readout><div style={{marginTop:5,display:"flex",flexDirection:"column",gap:3}}>{weekly.habitRows.length===0 && <span className="muted" style={{fontSize:12.5}}>No habits yet.</span>}{weekly.habitRows.map((h,i)=>(<div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12.5}}><span>{h.name}</span><span className="muted" style={{fontFamily:"'Space Mono',monospace",fontSize:11.5}}>{h.streak>0?`🔥${h.streak} · `:""}{h.week}/7</span></div>))}</div></div>
           <div style={{display:"flex",gap:16,flexWrap:"wrap"}}><div><div className="statn">{weekly.goalsDone}</div><Readout>goals hit</Readout></div><div><div className="statn">{weekly.tasksDone}</div><Readout>tasks done</Readout></div><div><div className="statn">{weekly.learned}</div><Readout>learned</Readout></div></div>
           <button className="link" onClick={()=>setShowWeekly(false)} style={{alignSelf:"flex-start"}}>Hide</button>
-        </div>) : <Note>Crunching your week…</Note>),
-    birthdays: T("birthdays","Birthdays",false,null,<>
-      {todayBdays.length>0 && <div style={{background:"var(--field)",border:"1px solid var(--fieldbd)",borderRadius:11,padding:"9px 11px",marginBottom:9}}><span style={{fontSize:13}}>🎂 Today: <b>{todayBdays.map(b=>b.name).join(", ")}</b></span></div>}
-      <div style={{display:"flex",gap:7,marginBottom:8,flexWrap:"wrap",alignItems:"center"}}>
-        <button className="pill" onClick={()=>vcfRef.current&&vcfRef.current.click()}>↧ Import contacts (.vcf)</button>
-        <input ref={vcfRef} type="file" accept=".vcf,text/vcard,text/directory" style={{display:"none"}} onChange={e=>{ importVcf(e.target.files&&e.target.files[0]); e.target.value=""; }} />
-      </div>
-      <BirthdayInput onAdd={b=>persistBirthdays([...birthdays,{id:uid(),...b}])} />
-      <div style={{marginTop:5}}>
-        {birthdays.length===0 && <Note>Sync from Google, or add people manually.</Note>}
-        {[...birthdays].sort((a,b)=>a.month-b.month||a.day-b.day).map(b=>(<div key={b.id} className="trow">
-          <span style={{flex:1,fontSize:13.5,display:"flex",alignItems:"center",gap:6}}>{b.name}{b.source && <span className="gbadge">sync</span>}</span>
-          <span className="muted" style={{fontSize:11.5,fontFamily:"'Space Mono',monospace"}}>{pad(b.day)}/{pad(b.month)}</span>
-          <button className="del" onClick={()=>persistBirthdays(birthdays.filter(x=>x.id!==b.id))}>×</button>
-        </div>))}
-      </div></>),
+        </div>) : <Note>Crunching your weeks…</Note>),
+    birthdays: T("birthdays","Birthdays",todayBdays.length>0,null,
+      <BirthdaysCard birthdays={birthdays} today={todayBdays}
+        onAdd={b=>persistBirthdays([...birthdays,{id:uid(),...b}])}
+        onRemove={id=>persistBirthdays(birthdays.filter(x=>x.id!==id))}
+        onImport={importVcf} />),
   };
 
   return (
@@ -638,9 +625,7 @@ function App(){
           <p>Everything here is stored only in this browser.</p>
           <div className="lab">Anthropic API key — powers the word, lesson, song & world tiles</div>
           <div className="srow"><input className="sinput" type="password" placeholder="sk-ant-…" value={keyField} onChange={e=>setKeyField(e.target.value)} /></div>
-          <div className="lab">Music taste</div>
-          <div className="srow"><input className="sinput" placeholder="e.g. analog, indie, lo-fi…" value={taste} onChange={e=>setTaste(e.target.value)} /></div>
-          <p className="hint" style={{marginTop:12}}>Birthdays: export your contacts as a vCard (.vcf) and use “Import contacts” on the Birthdays tile.</p>
+          <p className="hint" style={{marginTop:12}}>Birthdays: export your contacts as a vCard (.vcf), then use “All birthdays & import” on the Birthdays tile.</p>
           <div className="srow" style={{marginTop:14}}>
             <button className="savebtn" onClick={saveSettings}>Save & refresh</button>
             <button className="ghostbtn" onClick={resetLayout}>Reset layout</button>
@@ -673,6 +658,64 @@ function EventInput({onAdd}){ const [title,setTitle]=useState(""); const [date,s
 function BirthdayInput({onAdd}){ const [name,setName]=useState(""); const [day,setDay]=useState(""); const [month,setMonth]=useState("");
   const s=()=>{ const d=Number(day),m=Number(month); if(name.trim()&&d>=1&&d<=31&&m>=1&&m<=12){ onAdd({name:name.trim(),day:d,month:m}); setName(""); setDay(""); setMonth(""); } };
   return (<div className="addrow"><input className="addinput" style={{flex:2}} placeholder="Name" value={name} onChange={e=>setName(e.target.value)} /><input className="addinput" style={{width:42,flex:"none",textAlign:"center"}} placeholder="DD" value={day} onChange={e=>setDay(e.target.value.replace(/\D/g,"").slice(0,2))} /><input className="addinput" style={{width:42,flex:"none",textAlign:"center"}} placeholder="MM" value={month} onChange={e=>setMonth(e.target.value.replace(/\D/g,"").slice(0,2))} onKeyDown={e=>e.key==="Enter"&&s()} /><button className="addbtn" onClick={s}>+</button></div>); }
+
+function LineChart({values}){
+  const W=300,H=84,P=9, n=values.length, max=Math.max(...values,1);
+  const x=i=> P + (n<=1?0:(i*(W-2*P)/(n-1)));
+  const y=v=> (H-P) - (v/max)*(H-2*P);
+  const pts=values.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",display:"block",marginTop:6}}>
+      <line x1={P} y1={H-P} x2={W-P} y2={H-P} stroke="var(--hair)" strokeWidth="1"/>
+      <polyline points={pts} fill="none" stroke="var(--lbl)" strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round"/>
+      {values.map((v,i)=>(<circle key={i} cx={x(i)} cy={y(v)} r={v>0?2.6:1.5} fill="var(--lbl)"/>))}
+    </svg>
+  );
+}
+function nextBirthday(list){
+  if(!list.length) return null;
+  const now=new Date(); const base=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  let best=null,bd=99999;
+  list.forEach(b=>{ let d=new Date(now.getFullYear(),b.month-1,b.day); if(d<base) d=new Date(now.getFullYear()+1,b.month-1,b.day);
+    const days=Math.round((d-base)/86400000); if(days<bd){ bd=days; best={...b,days}; } });
+  return best;
+}
+function BirthdaysCard({birthdays,today,onAdd,onRemove,onImport}){
+  const [open,setOpen]=useState(false);
+  const fileRef=useRef(null);
+  const has=today.length>0; const next=nextBirthday(birthdays);
+  if(!open) return (
+    <div>
+      {has ? (<div>
+        <div style={{fontSize:30,lineHeight:1}}>🎂</div>
+        <div style={{fontSize:18,fontWeight:800,marginTop:6,lineHeight:1.15}}>{today.map(b=>b.name).join(", ")}</div>
+        <div className="muted" style={{fontSize:12.5,marginTop:3}}>Birthday today — send a message.</div>
+      </div>) : (<div>
+        <div style={{fontSize:15,fontWeight:700}}>No birthdays today</div>
+        {next && <div className="muted" style={{fontSize:12.5,marginTop:4}}>Next: {next.name} · {pad(next.day)}/{pad(next.month)} · {next.days===0?"today":next.days===1?"tomorrow":"in "+next.days+" days"}</div>}
+      </div>)}
+      <button className="link" style={{marginTop:12}} onClick={()=>setOpen(true)}>All birthdays & import →</button>
+    </div>
+  );
+  return (
+    <div>
+      <div style={{display:"flex",gap:7,marginBottom:8,flexWrap:"wrap",alignItems:"center"}}>
+        <button className="pill" onClick={()=>fileRef.current&&fileRef.current.click()}>↧ Import (.vcf)</button>
+        <button className="link" onClick={()=>setOpen(false)}>Done</button>
+        <input ref={fileRef} type="file" accept=".vcf,text/vcard,text/directory" style={{display:"none"}} onChange={e=>{ onImport(e.target.files&&e.target.files[0]); e.target.value=""; }} />
+      </div>
+      <BirthdayInput onAdd={onAdd} />
+      <div style={{marginTop:5}}>
+        {birthdays.length===0 && <Note>Import your contacts, or add people by hand.</Note>}
+        {[...birthdays].sort((a,b)=>a.month-b.month||a.day-b.day).map(b=>(<div key={b.id} className="trow">
+          <span style={{flex:1,fontSize:13.5,display:"flex",alignItems:"center",gap:6}}>{b.name}{b.source && <span className="gbadge">sync</span>}</span>
+          <span className="muted" style={{fontSize:11.5,fontFamily:"'Space Mono',monospace"}}>{pad(b.day)}/{pad(b.month)}</span>
+          <button className="del" onClick={()=>onRemove(b.id)}>×</button>
+        </div>))}
+      </div>
+    </div>
+  );
+}
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
